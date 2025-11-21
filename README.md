@@ -63,7 +63,6 @@ Built with FastAPI + Supabase + Python.
 - Supabase project (env variables set)
 - Recommended: Virtual environment
 
-```bash
 git clone https://github.com/anthonyjmc/email-invoice-automation.git
 cd email-invoice-automation
 
@@ -77,10 +76,12 @@ uvicorn app.main:app --reload
 Then open:
 👉 http://127.0.0.1:8000
 
-👤 Anthony J. Marquez Camacho
-Computer Engineer — AI & Automation Developer
+---
 
 If you want to automate business workflows or email processing:
-📩 anthonyjmarquez@upr.edu
+📩 anthony.marquez@upr.edu
 
 ⭐ If this project helped you, please star the repo!
+
+👤 Anthony J. Marquez Camacho
+Computer Engineer — AI & Automation Developer
