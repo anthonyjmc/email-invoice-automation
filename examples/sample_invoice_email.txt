@@ -1,0 +1,12 @@
+From: billing@vendor.com
+Subject: Invoice 1234
+
+Hello,
+
+Here is your invoice.
+
+Vendor: Cool Vendor LLC
+Total: 249.99 USD
+Date: 2025-01-12
+
+Thank you.
