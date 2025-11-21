@@ -7,9 +7,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from .config import settings
 from starlette.middleware.sessions import SessionMiddleware
-
-
+from fastapi import File, UploadFile
+import tempfile
+import os
 from pathlib import Path
+from .services.email_parser import parse_mock_email, parse_eml_invoice, parse_msg_invoice
+from .services.invoice_service import save_invoice, list_invoices
 
 templates = Jinja2Templates(directory="app/templates")
 app = FastAPI(title="Email Invoice Automation Demo")
@@ -60,6 +63,35 @@ async def process_ui(request: Request):
         return RedirectResponse("/", status_code=302)
 
     data = parse_mock_email("examples/sample_invoice_email.txt")
+    save_invoice(data)
+    return RedirectResponse("/dashboard", status_code=302)
+
+@app.post("/upload-invoice")
+async def upload_invoice(request: Request, file: UploadFile = File(...)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+
+    # Save file temporarily
+    temp_dir = tempfile.gettempdir()
+    file_path = os.path.join(temp_dir, file.filename)
+
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+
+    ext = file.filename.lower().split(".")[-1]
+
+    if ext == "txt":
+        data = parse_mock_email(file_path)
+
+    elif ext == "eml":
+        data = parse_eml_invoice(file_path)
+
+    elif ext == "msg":
+        data = parse_msg_invoice(file_path)
+
+    else:
+        return RedirectResponse("/dashboard?error=unsupported", status_code=302)
+
     save_invoice(data)
     return RedirectResponse("/dashboard", status_code=302)
 

@@ -78,12 +78,14 @@
 </head>
 <body>
    <header>
-    📊 Invoice Dashboard
+    Invoice Dashboard
     <a href="/logout" class="logout-btn">Logout</a>
     </header>
     <div class="container">
-        <button onclick="window.location.href='/process-ui'">➕ Process Invoice</button>
-
+        <form action="/upload-invoice" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".txt,.eml,.msg" required>
+            <button type="submit">📥 Process Invoice File (.eml or .txt)</button>
+        </form>
         <table>
             <thead>
                 <tr>

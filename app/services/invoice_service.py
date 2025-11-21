@@ -1,9 +1,13 @@
 from app.db import supabase
+from datetime import date, datetime
 
-def save_invoice(data: dict):
-    # Ensure invoice_date is a string (JSON-safe)
-    if data.get("invoice_date"):
-        data["invoice_date"] = data["invoice_date"].format()
+def save_invoice(data):
+    # Normalizar fecha
+    if "invoice_date" in data:
+        if isinstance(data["invoice_date"], (date, datetime)):
+            data["invoice_date"] = data["invoice_date"].isoformat()
+        # else: ya es string → OK, no tocarlo
+
     supabase.table("invoices").insert(data).execute()
 
 def list_invoices():
