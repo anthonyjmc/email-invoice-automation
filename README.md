@@ -3,7 +3,7 @@
 Automate invoice processing in seconds.  
 Upload emails or invoice text — the system extracts key fields and stores them in a secure database.
 
-Built with FastAPI + Supabase + Python.
+Built with FastAPI + Supabase + Python + Azure.
 
 ---
 
@@ -47,12 +47,13 @@ Built with FastAPI + Supabase + Python.
 | Auth | Secure cookie sessions |
 | Database | Supabase PostgreSQL |
 | Deployment | Render (free tier compatible) |
+| Agent | Azure Agent |
 
 ---
 
 ## 📸 Screenshots
 
-> Coming soon: Dashboard + Upload UI 🚀
+<img width="1366" height="634" alt="Screenshot (83)" src="https://github.com/user-attachments/assets/2a01bef6-7b0f-48d8-985c-19676f0fe507" />
 
 ---
 
