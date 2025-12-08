@@ -1,12 +1,22 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    supabase_url: str
-    supabase_anon_key: str
-    app_password: str
-    auth_password: str
+    """
+    Application settings loaded from environment variables or .env file.
+    """
+    
+    APP_PASSWORD: str
+    SUPABASE_URL: str
+    SUPABASE_ANON_KEY: str
+    AUTH_PASSWORD: str
 
-    class Config:
-        env_file = ".env"
+    AZURE_OPENAI_ENDPOINT: str
+    AZURE_OPENAI_API_KEY: str
+    AZURE_OPENAI_DEPLOYMENT: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore"
+    )
 
 settings = Settings()

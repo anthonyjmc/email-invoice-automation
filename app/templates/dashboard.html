@@ -3,107 +3,578 @@
 <head>
     <meta charset="UTF-8">
     <title>Invoice Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f6f7f9;
+        :root {
+            --bg: #020617;
+            --bg-soft: #0b1220;
+            --surface: #020617;
+            --surface-card: #020617;
+            --border-subtle: #1f2937;
+            --primary: #2563eb;
+            --primary-soft: #1d4ed8;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --radius-xl: 18px;
+            --radius-md: 10px;
+        }
+
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top left, #1e293b 0, #020617 60%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
         header {
-            background: #0077ff;
-            color: white;
-            padding: 16px;
-            text-align: center;
-            font-size: 22px;
+            backdrop-filter: blur(18px);
+            background: linear-gradient(
+                to right,
+                rgba(15, 23, 42, 0.96),
+                rgba(15, 23, 42, 0.88)
+            );
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #eff6ff;
+            font-size: 17px;
+            font-weight: 700;
+            box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.3);
+        }
+
+        .brand-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title {
+            font-size: 18px;
             font-weight: 600;
+            letter-spacing: -0.03em;
         }
-        .container {
-            width: 90%;
-            max-width: 800px;
-            margin: 40px auto;
-            background: #fff;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
         }
-        button {
-            padding: 10px 18px;
-            background: #0077ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: rgba(22, 163, 74, 0.1);
+            color: #4ade80;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+        }
+
+        .logout-btn {
+            font-size: 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            background: linear-gradient(
+                to right,
+                rgba(239, 68, 68, 0.1),
+                rgba(127, 29, 29, 0.2)
+            );
+            color: #fecaca;
+            padding: 7px 14px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.14s ease, transform 0.1s ease,
+                box-shadow 0.1s ease;
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(
+                to right,
+                rgba(248, 113, 113, 0.35),
+                rgba(127, 29, 29, 0.65)
+            );
+            transform: translateY(-0.5px);
+            box-shadow: 0 8px 20px rgba(127, 29, 29, 0.45);
+        }
+
+        .page-shell {
+            max-width: 1040px;
+            margin: 26px auto 40px;
+            padding: 0 16px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(0, 2.3fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 860px) {
+            .grid-layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+
+        .panel {
+            background: radial-gradient(circle at top left, #020617 0, #020617 55%);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            padding: 18px 18px 16px;
+            box-shadow:
+                0 18px 45px rgba(15, 23, 42, 0.7),
+                0 0 0 1px rgba(15, 23, 42, 0.9);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: -40%;
+            background: radial-gradient(
+                circle at 0 0,
+                rgba(56, 189, 248, 0.22),
+                transparent 55%
+            );
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .panel-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel-title-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Upload area */
+
+        .upload-card {
+            margin-top: 8px;
+            padding: 14px;
+            border-radius: 14px;
+            background: radial-gradient(circle at top left, #0b1220, #020617);
+            border: 1px dashed rgba(148, 163, 184, 0.6);
+        }
+
+        .upload-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .upload-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 14px;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .upload-texts {
+            flex: 1;
+        }
+
+        .upload-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .upload-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.75);
+            font-size: 12px;
             cursor: pointer;
-            margin-bottom: 16px;
+            color: #e5e7eb;
+            background: rgba(15, 23, 42, 0.7);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .file-label span {
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .upload-button {
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: none;
+            font-size: 12px;
             font-weight: 600;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            color: #f9fafb;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 10px 26px rgba(37, 99, 235, 0.5);
+            transition: transform 0.1s ease, box-shadow 0.1s ease,
+                opacity 0.1s ease;
+            white-space: nowrap;
         }
-        button:hover {
-            background: #005fcc;
+
+        .upload-button:hover {
+            transform: translateY(-0.5px);
+            box-shadow: 0 14px 36px rgba(37, 99, 235, 0.65);
         }
+
+        .upload-button:active {
+            transform: translateY(0);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
+        }
+
+        /* Table */
+
+        .table-wrapper {
+            margin-top: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: radial-gradient(circle at top left, #020617, #020617);
+            overflow: hidden;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 12px;
+            font-size: 13px;
         }
-        th, td {
+
+        thead {
+            background: linear-gradient(
+                to right,
+                rgba(15, 23, 42, 0.96),
+                rgba(15, 23, 42, 0.86)
+            );
+        }
+
+        th,
+        td {
             text-align: left;
-            padding: 12px 10px;
-            border-bottom: 1px solid #e3e3e3;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(31, 41, 55, 0.85);
         }
+
         th {
-            background: #f0f3f8;
-            font-size: 15px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: #9ca3af;
         }
-        tr:hover {
-            background: #f9fbff;
+
+        tbody tr:last-child td {
+            border-bottom: none;
         }
+
+        tbody tr:hover {
+            background: radial-gradient(circle at left, #020617, #020617);
+        }
+
         .amount {
-            font-weight: bold;
-            color: #0077ff;
+            font-weight: 600;
+            color: #a5b4fc;
         }
-        .logout-btn {
-        float: right;
-        color: white;
-        font-size: 14px;
-        text-decoration: none;
-        background: #ff4b4b;
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-weight: bold;
+
+        .chip-date {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 9px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            font-size: 11px;
+            color: #e5e7eb;
         }
-        .logout-btn:hover {
-            background: #d93636;
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #38bdf8;
+        }
+
+        .vendor-col {
+            font-weight: 500;
+        }
+
+        .empty-state {
+            padding: 14px 12px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .stats-row {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .stat-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+        }
+
+        .stat-dot.primary {
+            background: #60a5fa;
+        }
+
+        .stat-dot.accent {
+            background: #22c55e;
         }
     </style>
 </head>
 <body>
-   <header>
-    Invoice Dashboard
-    <a href="/logout" class="logout-btn">Logout</a>
-    </header>
-    <div class="container">
-        <form action="/upload-invoice" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".txt,.eml,.msg" required>
-            <button type="submit">📥 Process Invoice File (.eml or .txt)</button>
-        </form>
-        <table>
-            <thead>
-                <tr>
-                    <th>Vendor</th>
-                    <th>Total</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for inv in invoices %}
-                    <tr>
-                        <td>{{ inv.vendor }}</td>
-                        <td class="amount">${{ inv.total }}</td>
-                        <td>{{ inv.invoice_date }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<header>
+    <div class="brand">
+        <div class="brand-logo">AI</div>
+        <div class="brand-info">
+            <div class="brand-title">Invoice Dashboard</div>
+            <div class="brand-subtitle">Azure OpenAI · Email → Structured Data</div>
+        </div>
     </div>
+    <div class="header-actions">
+        <div class="badge-live">
+            <span class="badge-live-dot"></span>
+            Live Demo
+        </div>
+        <a href="/logout" class="logout-btn">
+            <span>Logout</span> ⎋
+        </a>
+    </div>
+</header>
+
+<div class="page-shell">
+    <div class="grid-layout">
+
+        <!-- Left: Upload panel -->
+        <div class="panel">
+            <div class="panel-inner">
+                <div class="panel-title-row">
+                    <div>
+                        <div class="panel-title">Upload new invoice</div>
+                        <div class="panel-subtitle">
+                            Upload an email file (.txt, .eml, .msg) and let the agent extract the data.
+                        </div>
+                    </div>
+                </div>
+
+                <form action="/upload-invoice" method="post" enctype="multipart/form-data">
+                    <div class="upload-card">
+                        <div class="upload-row">
+                            <div class="upload-icon">📥</div>
+                            <div class="upload-texts">
+                                <div class="upload-title">
+                                    Drop a file here or browse from your computer
+                                </div>
+                                <div class="upload-hint">
+                                    Supported formats: <strong>.txt</strong>, <strong>.eml</strong>, <strong>.msg</strong>
+                                </div>
+                            </div>
+                            <div class="upload-controls">
+                                <label for="file" class="file-label">
+                                    <span id="file-label-text">Choose file</span>
+                                </label>
+                                <input
+                                    class="file-input"
+                                    id="file"
+                                    name="file"
+                                    type="file"
+                                    accept=".txt,.eml,.msg"
+                                    required
+                                    onchange="updateFileName(this)"
+                                />
+                                <button type="submit" class="upload-button">
+                                    <span>Process</span> →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="stats-row">
+                    <div class="stat-pill">
+                        <span class="stat-dot primary"></span>
+                        <span>Total invoices: {{ invoices|length }}</span>
+                    </div>
+                    <div class="stat-pill">
+                        <span class="stat-dot accent"></span>
+                        <span>AI extraction enabled</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Table panel -->
+        <div class="panel">
+            <div class="panel-inner">
+                <div class="panel-title-row">
+                    <div>
+                        <div class="panel-title">Invoices</div>
+                        <div class="panel-subtitle">
+                            Recently processed invoices from uploaded email files.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Total</th>
+                            <th>Date</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% if invoices and invoices|length > 0 %}
+                            {% for inv in invoices %}
+                                <tr>
+                                    <td class="vendor-col">{{ inv.vendor }}</td>
+                                    <td class="amount">
+                                        ${{ "%.2f"|format(inv.total) if inv.total is not none else "0.00" }}
+                                    </td>
+                                    <td>
+                                        <span class="chip-date">
+                                            <span class="chip-dot"></span>
+                                            {{ inv.invoice_date }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    No invoices processed yet. Upload an email file to get started.
+                                </td>
+                            </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateFileName(input) {
+        const labelSpan = document.getElementById('file-label-text');
+        if (!input.files || input.files.length === 0) {
+            labelSpan.textContent = 'Choose file';
+        } else {
+            labelSpan.textContent = input.files[0].name;
+        }
+    }
+</script>
 </body>
 </html>

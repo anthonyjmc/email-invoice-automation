@@ -10,3 +10,4 @@ python-multipart
 jinja2
 itsdangerous
 extract-msg
+openai
