@@ -31,9 +31,13 @@ Built with FastAPI + Supabase + Python + Azure.
 ## 🧠 How it works
 
 1️⃣ Upload an invoice email via dashboard
+
 2️⃣ Azure OpenAI structured-output agent extracts key fields
+
 3️⃣ Regex fallback is applied if the AI misses anything
+
 4️⃣ Data is stored and visible in the dashboard
+
 5️⃣ Exportable for accounting (coming soon)
 
 ---
@@ -54,7 +58,9 @@ Built with FastAPI + Supabase + Python + Azure.
 
 ## 📸 Screenshots
 
-<img width="1366" height="634" alt="Screenshot (83)" src="https://github.com/user-attachments/assets/2a01bef6-7b0f-48d8-985c-19676f0fe507" />
+<img width="1366" height="635" alt="Screenshot (84)" src="https://github.com/user-attachments/assets/dc0f3ea8-f202-4df0-9c71-494005480dd4" />
+<img width="1366" height="638" alt="Screenshot (86)" src="https://github.com/user-attachments/assets/70247ae0-c0bc-421e-9ff6-156c9f715c9f" />
+<img width="1366" height="633" alt="Screenshot (87)" src="https://github.com/user-attachments/assets/5c639683-a592-426d-8d25-28b3a446aa34" />
 
 ---
 
