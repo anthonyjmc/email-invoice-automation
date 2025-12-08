@@ -1,4 +1,4 @@
-# 🔁 AI-Powered Email Invoice Automation
+# 🔁 AI‑Powered Email Invoice Scanner
 
 Automate invoice processing in seconds.  
 Upload emails or invoice text — the system extracts key fields and stores them in a secure database.
@@ -30,10 +30,11 @@ Built with FastAPI + Supabase + Python + Azure.
 
 ## 🧠 How it works
 
-1️⃣ Upload an invoice email via dashboard  
-2️⃣ AI-assisted parser extracts key invoice fields  
-3️⃣ Data is stored and visible in the dashboard  
-4️⃣ Exportable for accounting (coming soon)
+1️⃣ Upload an invoice email via dashboard
+2️⃣ Azure OpenAI structured-output agent extracts key fields
+3️⃣ Regex fallback is applied if the AI misses anything
+4️⃣ Data is stored and visible in the dashboard
+5️⃣ Exportable for accounting (coming soon)
 
 ---
 
@@ -43,11 +44,11 @@ Built with FastAPI + Supabase + Python + Azure.
 |------|------------|
 | Backend API | FastAPI |
 | Frontend | Jinja2 HTML templates |
-| Parsing | Regex + Email MIME parsing |
+| Parsing | Azure OpenAI (GPT-4o / GPT-4o-mini) + Regex + MIME parsing |
 | Auth | Secure cookie sessions |
 | Database | Supabase PostgreSQL |
-| Deployment | Render (free tier compatible) |
-| Agent | Azure Agent (Open AI) |
+| Deployment | Render / Azure App Service |
+| Agent | Azure OpenAI Structured Output Agent |
 
 ---
 
@@ -61,7 +62,8 @@ Built with FastAPI + Supabase + Python + Azure.
 
 ### Requirements
 - Python 3.10+
-- Supabase project (env variables set)
+- Supabase project (with URL + key)
+- Azure OpenAI deployment
 - Recommended: Virtual environment
 
 git clone https://github.com/anthonyjmc/email-invoice-automation.git
