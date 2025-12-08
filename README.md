@@ -47,7 +47,7 @@ Built with FastAPI + Supabase + Python + Azure.
 | Auth | Secure cookie sessions |
 | Database | Supabase PostgreSQL |
 | Deployment | Render (free tier compatible) |
-| Agent | Azure Agent |
+| Agent | Azure Agent (Open AI) |
 
 ---
 
