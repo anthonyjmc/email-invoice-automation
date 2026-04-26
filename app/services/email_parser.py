@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import extract_msg
+from pypdf import PdfReader
 
 from app.services.azure_invoice_agent import extract_invoice_from_email
 
@@ -81,6 +82,24 @@ def parse_mock_email(path: str) -> Dict[str, Any]:
     This is helpful for testing without real .eml or .msg files.
     """
     content = Path(path).read_text(encoding="utf-8", errors="ignore")
+    return parse_text_to_fields(content)
+
+
+def parse_pdf_invoice(filepath: str) -> Dict[str, Any]:
+    """
+    Parse a .pdf invoice by extracting text from all pages and then reusing
+    the same invoice-field extraction pipeline.
+    """
+    try:
+        reader = PdfReader(filepath)
+        pages_text = []
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            pages_text.append(page_text)
+        content = "\n".join(pages_text).strip()
+    except Exception:
+        content = ""
+
     return parse_text_to_fields(content)
 
 

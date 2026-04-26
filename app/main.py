@@ -15,6 +15,7 @@ from app.services.email_parser import (
     parse_mock_email,
     parse_eml_invoice,
     parse_msg_invoice,
+    parse_pdf_invoice,
 )
 from app.services.invoice_service import save_invoice, list_invoices
 
@@ -41,7 +42,7 @@ LOGIN_ERROR_MESSAGES = {
 
 DASHBOARD_ERROR_MESSAGES = {
     "auth_required": "Please log in to continue.",
-    "unsupported": "Unsupported file type. Use .txt, .eml, or .msg.",
+    "unsupported": "Unsupported file type. Use .txt, .eml, .msg, or .pdf.",
     "no_file_name": "Invalid upload: file name is missing.",
     "parse_failed": "Unable to process that file. Please verify format and content.",
     "save_failed": "Invoice was parsed but could not be saved. Please try again.",
@@ -206,7 +207,7 @@ async def process_ui(request: Request):
 @app.post("/upload-invoice")
 async def upload_invoice(request: Request, file: UploadFile = File(...)):
     """
-    Upload an invoice email file (.txt, .eml, .msg),
+    Upload an invoice email file (.txt, .eml, .msg, .pdf),
     parse it using the appropriate parser, and save to the database.
     """
     if not require_auth(request):
@@ -238,6 +239,8 @@ async def upload_invoice(request: Request, file: UploadFile = File(...)):
             data = parse_eml_invoice(file_path)
         elif ext == "msg":
             data = parse_msg_invoice(file_path)
+        elif ext == "pdf":
+            data = parse_pdf_invoice(file_path)
         else:
             # Unsupported file type
             return RedirectResponse("/dashboard?error=unsupported", status_code=302)
