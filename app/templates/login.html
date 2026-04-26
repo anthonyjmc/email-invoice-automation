@@ -6,15 +6,17 @@
     <title>Invoice AI – Login</title>
     <style>
         :root {
-            --primary: #2563eb;
-            --primary-soft: #dbeafe;
-            --bg: #0f172a;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #6b7280;
-            --danger: #ef4444;
-            --radius-xl: 18px;
-            --radius-md: 10px;
+            --primary: #5b8def;
+            --primary-dark: #4b7ad4;
+            --primary-soft: #dfe9ff;
+            --bg: #e8eef7;
+            --surface: #e8eef7;
+            --text-main: #2f3b52;
+            --text-muted: #74819a;
+            --radius-xl: 22px;
+            --radius-md: 14px;
+            --shadow-raised: -10px -10px 20px #ffffff, 10px 10px 24px #cfd8e6;
+            --shadow-inset: inset -5px -5px 10px #ffffff, inset 5px 5px 10px #ccd7e6;
         }
 
         * {
@@ -30,7 +32,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: radial-gradient(circle at top left, #1d4ed8 0, #020617 55%);
+            background: var(--bg);
             color: var(--text-main);
         }
 
@@ -41,11 +43,9 @@
         }
 
         .card {
-            background: var(--card-bg);
+            background: var(--surface);
             border-radius: var(--radius-xl);
-            box-shadow:
-                0 18px 45px rgba(15, 23, 42, 0.35),
-                0 0 0 1px rgba(148, 163, 184, 0.25);
+            box-shadow: var(--shadow-raised);
             padding: 28px 26px 26px;
             position: relative;
             overflow: hidden;
@@ -55,14 +55,8 @@
             content: "";
             position: absolute;
             inset: -40%;
-            background: conic-gradient(
-                from 200deg,
-                rgba(37, 99, 235, 0.1),
-                transparent,
-                rgba(56, 189, 248, 0.18),
-                transparent
-            );
-            opacity: 0.7;
+            background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.8), transparent 55%);
+            opacity: 0.65;
             pointer-events: none;
         }
 
@@ -77,12 +71,13 @@
             gap: 6px;
             padding: 4px 10px;
             border-radius: 999px;
-            background: var(--primary-soft);
-            color: #1d4ed8;
+            background: var(--surface);
+            color: var(--primary-dark);
             font-size: 11px;
             font-weight: 600;
             letter-spacing: 0.03em;
             text-transform: uppercase;
+            box-shadow: -4px -4px 10px #ffffff, 4px 4px 8px #d0d9e7;
         }
 
         .badge-dot {
@@ -104,6 +99,20 @@
             color: var(--text-muted);
         }
 
+        .alert {
+            margin-top: 14px;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .alert-error {
+            color: #9f2b2b;
+            background: #f9e4e4;
+            box-shadow: inset -3px -3px 7px #fff3f3, inset 3px 3px 7px #eac9c9;
+        }
+
         form {
             margin-top: 22px;
         }
@@ -113,7 +122,7 @@
             text-align: left;
             font-size: 13px;
             font-weight: 600;
-            color: #111827;
+            color: var(--text-main);
             margin-bottom: 6px;
         }
 
@@ -121,15 +130,19 @@
             width: 100%;
             padding: 11px 11px;
             border-radius: var(--radius-md);
-            border: 1px solid #d1d5db;
+            border: none;
+            background: var(--surface);
             font-size: 14px;
             outline: none;
-            transition: border-color 0.16s ease, box-shadow 0.16s ease;
+            transition: box-shadow 0.16s ease;
+            box-shadow: var(--shadow-inset);
         }
 
         input[type="password"]:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+            box-shadow:
+                inset -3px -3px 8px #ffffff,
+                inset 3px 3px 8px #c3cfdf,
+                0 0 0 2px rgba(91, 141, 239, 0.2);
         }
 
         button {
@@ -138,7 +151,7 @@
             padding: 11px;
             border-radius: var(--radius-md);
             border: none;
-            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: #f9fafb;
             font-weight: 600;
             font-size: 14px;
@@ -149,18 +162,18 @@
             gap: 8px;
             transition: transform 0.1s ease, box-shadow 0.1s ease,
                 opacity 0.1s ease;
-            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35);
+            box-shadow: 6px 6px 12px #c8d3e3, -6px -6px 12px #ffffff;
         }
 
         button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 16px 40px rgba(37, 99, 235, 0.45);
+            box-shadow: 8px 8px 15px #c6d0e0, -8px -8px 15px #ffffff;
             opacity: 0.98;
         }
 
         button:active {
             transform: translateY(0);
-            box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
+            box-shadow: inset 4px 4px 10px #4a78cf, inset -4px -4px 10px #649aff;
         }
 
         .hint {
@@ -173,12 +186,12 @@
         .footer-note {
             margin-top: 16px;
             font-size: 11px;
-            color: #9ca3af;
+            color: var(--text-muted);
             text-align: center;
         }
 
         .footer-note span {
-            color: #4f46e5;
+            color: var(--primary-dark);
             font-weight: 500;
         }
     </style>
@@ -195,6 +208,11 @@
                 <p class="subtitle">
                     Secure access to your AI-powered invoice extraction dashboard.
                 </p>
+                {% if error_message %}
+                <div class="alert alert-error" role="alert">
+                    {{ error_message }}
+                </div>
+                {% endif %}
 
                 <form action="/login" method="post">
                     <label for="password">Access password</label>

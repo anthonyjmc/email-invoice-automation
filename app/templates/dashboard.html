@@ -6,19 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root {
-            --bg: #020617;
-            --bg-soft: #0b1220;
-            --surface: #020617;
-            --surface-card: #020617;
-            --border-subtle: #1f2937;
-            --primary: #2563eb;
-            --primary-soft: #1d4ed8;
+            --bg: #e8eef7;
+            --surface: #e8eef7;
+            --surface-soft: #edf2fa;
+            --border-subtle: #d3dceb;
+            --primary: #5b8def;
+            --primary-soft: #dfe9ff;
             --accent: #22c55e;
-            --danger: #ef4444;
-            --text-main: #e5e7eb;
-            --text-muted: #9ca3af;
-            --radius-xl: 18px;
-            --radius-md: 10px;
+            --danger: #e16464;
+            --text-main: #2f3b52;
+            --text-muted: #74819a;
+            --radius-xl: 20px;
+            --radius-md: 12px;
+            --shadow-raised: -10px -10px 20px #ffffff, 10px 10px 22px #ced7e6;
+            --shadow-inset: inset -4px -4px 10px #ffffff, inset 4px 4px 10px #cdd7e6;
         }
 
         * {
@@ -30,19 +31,14 @@
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
                 "Segoe UI", sans-serif;
-            background: radial-gradient(circle at top left, #1e293b 0, #020617 60%);
+            background: var(--bg);
             color: var(--text-main);
             min-height: 100vh;
         }
 
         header {
-            backdrop-filter: blur(18px);
-            background: linear-gradient(
-                to right,
-                rgba(15, 23, 42, 0.96),
-                rgba(15, 23, 42, 0.88)
-            );
-            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-subtle);
             padding: 14px 24px;
             display: flex;
             align-items: center;
@@ -62,14 +58,14 @@
             width: 30px;
             height: 30px;
             border-radius: 999px;
-            background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+            background: linear-gradient(135deg, #7ba5f5, #4b7ad4);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #eff6ff;
+            color: #f7fbff;
             font-size: 17px;
             font-weight: 700;
-            box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.3);
+            box-shadow: -4px -4px 9px #ffffff, 4px 4px 8px #ccd6e6;
         }
 
         .brand-info {
@@ -101,7 +97,7 @@
             padding: 3px 9px;
             border-radius: 999px;
             background: rgba(22, 163, 74, 0.1);
-            color: #4ade80;
+            color: #1f9c52;
             font-size: 11px;
             font-weight: 500;
         }
@@ -111,37 +107,28 @@
             height: 7px;
             border-radius: 999px;
             background: #22c55e;
-            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
         }
 
         .logout-btn {
             font-size: 12px;
             border-radius: 999px;
-            border: 1px solid rgba(248, 113, 113, 0.4);
-            background: linear-gradient(
-                to right,
-                rgba(239, 68, 68, 0.1),
-                rgba(127, 29, 29, 0.2)
-            );
-            color: #fecaca;
+            border: none;
+            background: var(--surface);
+            color: #bf5454;
             padding: 7px 14px;
             text-decoration: none;
             font-weight: 500;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: background 0.14s ease, transform 0.1s ease,
-                box-shadow 0.1s ease;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            box-shadow: -4px -4px 8px #ffffff, 4px 4px 8px #cfd8e6;
         }
 
         .logout-btn:hover {
-            background: linear-gradient(
-                to right,
-                rgba(248, 113, 113, 0.35),
-                rgba(127, 29, 29, 0.65)
-            );
             transform: translateY(-0.5px);
-            box-shadow: 0 8px 20px rgba(127, 29, 29, 0.45);
+            box-shadow: -5px -5px 10px #ffffff, 5px 5px 10px #cad4e4;
         }
 
         .page-shell {
@@ -169,13 +156,11 @@
         }
 
         .panel {
-            background: radial-gradient(circle at top left, #020617 0, #020617 55%);
+            background: var(--surface);
             border-radius: 18px;
-            border: 1px solid rgba(148, 163, 184, 0.25);
+            border: 1px solid #e5ebf5;
             padding: 18px 18px 16px;
-            box-shadow:
-                0 18px 45px rgba(15, 23, 42, 0.7),
-                0 0 0 1px rgba(15, 23, 42, 0.9);
+            box-shadow: var(--shadow-raised);
             position: relative;
             overflow: hidden;
         }
@@ -184,12 +169,8 @@
             content: "";
             position: absolute;
             inset: -40%;
-            background: radial-gradient(
-                circle at 0 0,
-                rgba(56, 189, 248, 0.22),
-                transparent 55%
-            );
-            opacity: 0.4;
+            background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.8), transparent 55%);
+            opacity: 0.6;
             pointer-events: none;
         }
 
@@ -217,14 +198,40 @@
             color: var(--text-muted);
         }
 
+        .alert-stack {
+            margin-top: 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .alert {
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .alert-error {
+            color: #9f2b2b;
+            background: #f9e4e4;
+            box-shadow: inset -3px -3px 7px #fff3f3, inset 3px 3px 7px #eac9c9;
+        }
+
+        .alert-success {
+            color: #1d7a43;
+            background: #e5f6ec;
+            box-shadow: inset -3px -3px 7px #f1fff6, inset 3px 3px 7px #c9e8d5;
+        }
+
         /* Upload area */
 
         .upload-card {
             margin-top: 8px;
             padding: 14px;
             border-radius: 14px;
-            background: radial-gradient(circle at top left, #0b1220, #020617);
-            border: 1px dashed rgba(148, 163, 184, 0.6);
+            background: var(--surface-soft);
+            border: 1px dashed #b8c4d8;
+            box-shadow: var(--shadow-inset);
         }
 
         .upload-row {
@@ -237,7 +244,7 @@
             width: 38px;
             height: 38px;
             border-radius: 14px;
-            background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+            background: linear-gradient(135deg, #7ba5f5, #4b7ad4);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -275,9 +282,10 @@
             border: 1px solid rgba(148, 163, 184, 0.75);
             font-size: 12px;
             cursor: pointer;
-            color: #e5e7eb;
-            background: rgba(15, 23, 42, 0.7);
+            color: var(--text-main);
+            background: var(--surface);
             display: inline-flex;
+            box-shadow: -3px -3px 7px #ffffff, 3px 3px 7px #cfd8e6;
             align-items: center;
             gap: 6px;
             white-space: nowrap;
@@ -295,13 +303,13 @@
             border: none;
             font-size: 12px;
             font-weight: 600;
-            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            background: linear-gradient(135deg, #6f99f2, #4b7ad4);
             color: #f9fafb;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            box-shadow: 0 10px 26px rgba(37, 99, 235, 0.5);
+            box-shadow: 6px 6px 12px #cbd5e4, -6px -6px 12px #ffffff;
             transition: transform 0.1s ease, box-shadow 0.1s ease,
                 opacity 0.1s ease;
             white-space: nowrap;
@@ -309,12 +317,12 @@
 
         .upload-button:hover {
             transform: translateY(-0.5px);
-            box-shadow: 0 14px 36px rgba(37, 99, 235, 0.65);
+            box-shadow: 7px 7px 13px #c9d2e2, -7px -7px 13px #ffffff;
         }
 
         .upload-button:active {
             transform: translateY(0);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
+            box-shadow: inset 4px 4px 8px #4d7fd9, inset -4px -4px 8px #7ca5fa;
         }
 
         /* Table */
@@ -322,9 +330,10 @@
         .table-wrapper {
             margin-top: 6px;
             border-radius: 14px;
-            border: 1px solid rgba(148, 163, 184, 0.28);
-            background: radial-gradient(circle at top left, #020617, #020617);
+            border: 1px solid #d9e1ef;
+            background: var(--surface-soft);
             overflow: hidden;
+            box-shadow: var(--shadow-inset);
         }
 
         table {
@@ -334,25 +343,21 @@
         }
 
         thead {
-            background: linear-gradient(
-                to right,
-                rgba(15, 23, 42, 0.96),
-                rgba(15, 23, 42, 0.86)
-            );
+            background: #dde6f5;
         }
 
         th,
         td {
             text-align: left;
             padding: 10px 12px;
-            border-bottom: 1px solid rgba(31, 41, 55, 0.85);
+            border-bottom: 1px solid #d4ddec;
         }
 
         th {
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.09em;
-            color: #9ca3af;
+            color: #6f7d96;
         }
 
         tbody tr:last-child td {
@@ -360,12 +365,12 @@
         }
 
         tbody tr:hover {
-            background: radial-gradient(circle at left, #020617, #020617);
+            background: #e8eef8;
         }
 
         .amount {
             font-weight: 600;
-            color: #a5b4fc;
+            color: #4b7ad4;
         }
 
         .chip-date {
@@ -374,10 +379,11 @@
             gap: 6px;
             border-radius: 999px;
             padding: 4px 9px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.4);
+            background: var(--surface);
+            border: 1px solid #d0d9e8;
             font-size: 11px;
-            color: #e5e7eb;
+            color: var(--text-main);
+            box-shadow: -2px -2px 5px #ffffff, 2px 2px 5px #cfd8e7;
         }
 
         .chip-dot {
@@ -413,8 +419,9 @@
             gap: 6px;
             padding: 4px 8px;
             border-radius: 999px;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #d0d9e8;
+            background: var(--surface);
+            box-shadow: -2px -2px 5px #ffffff, 2px 2px 5px #cfd8e7;
         }
 
         .stat-dot {
@@ -466,6 +473,20 @@
                         </div>
                     </div>
                 </div>
+                {% if error_message or success_message %}
+                <div class="alert-stack">
+                    {% if error_message %}
+                    <div class="alert alert-error" role="alert">
+                        {{ error_message }}
+                    </div>
+                    {% endif %}
+                    {% if success_message %}
+                    <div class="alert alert-success" role="status">
+                        {{ success_message }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
 
                 <form action="/upload-invoice" method="post" enctype="multipart/form-data">
                     <div class="upload-card">

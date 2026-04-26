@@ -79,6 +79,11 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
+Create env file:
+cp .env.example .env  # Windows PowerShell: Copy-Item .env.example .env
+
+Update `.env` with your real Supabase and Azure OpenAI credentials before starting the server.
+
 Run Locally:
 uvicorn app.main:app --reload
 
