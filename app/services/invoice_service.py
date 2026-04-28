@@ -2,11 +2,11 @@ from app.db import supabase
 from datetime import date, datetime
 
 def save_invoice(data):
-    # Normalizar fecha
+    # Normalize date values before persisting
     if "invoice_date" in data:
         if isinstance(data["invoice_date"], (date, datetime)):
             data["invoice_date"] = data["invoice_date"].isoformat()
-        # else: ya es string → OK, no tocarlo
+        # If it is already a string, keep it unchanged
 
     supabase.table("invoices").insert(data).execute()
 

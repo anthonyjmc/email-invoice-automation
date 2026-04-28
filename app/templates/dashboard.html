@@ -565,17 +565,17 @@
             <div class="tab-list">
                 <button class="tab-button active" data-tab-target="upload-tab" type="button">
                     <div class="tab-title">Upload Invoice</div>
-                    <div class="tab-description">Carga y procesa email files</div>
+                    <div class="tab-description">Upload and process email files</div>
                 </button>
                 <button class="tab-button" data-tab-target="invoices-tab" type="button">
                     <div class="tab-title">Invoices</div>
-                    <div class="tab-description">Analytics, filtros y tabla</div>
+                    <div class="tab-description">Analytics, filters, and table</div>
                 </button>
             </div>
             <div class="side-stats">
-                <div><strong id="side-count">{{ invoices|length }}</strong> invoices registradas</div>
-                <div><strong>AI Extraction</strong> activo</div>
-                <div><strong>Rate Limit</strong> habilitado</div>
+                <div><strong id="side-count">{{ invoices|length }}</strong> invoices registered</div>
+                <div><strong>AI Extraction</strong> enabled</div>
+                <div><strong>Rate Limit</strong> enabled</div>
             </div>
         </div>
     </aside>
@@ -585,7 +585,7 @@
             <section id="upload-tab" class="tab-content active">
                 <div class="section-header">
                     <h2>Upload Invoice</h2>
-                    <p>Sube un archivo y deja que el pipeline extraiga datos estructurados automáticamente.</p>
+                    <p>Upload a file and let the pipeline extract structured data automatically.</p>
                 </div>
 
                 {% if error_message or success_message %}
@@ -608,8 +608,8 @@
                         <div class="upload-top">
                             <div class="upload-icon">↑</div>
                             <div>
-                                <div class="upload-title">Drag and drop o selecciona tu invoice</div>
-                                <div class="upload-subtitle">Formatos soportados: .txt, .eml, .msg, .pdf</div>
+                                <div class="upload-title">Drag and drop or select your invoice</div>
+                                <div class="upload-subtitle">Supported formats: .txt, .eml, .msg, .pdf</div>
                             </div>
                         </div>
 
@@ -642,7 +642,7 @@
             <section id="invoices-tab" class="tab-content">
                 <div class="section-header">
                     <h2>Invoice Analytics</h2>
-                    <p>Filtra por compañía, revisa montos y visualiza distribución por vendor.</p>
+                    <p>Filter by company, review amounts, and visualize distribution by vendor.</p>
                 </div>
 
                 <div class="invoice-kpis">
@@ -661,7 +661,7 @@
                 </div>
 
                 <div class="invoice-tools">
-                    <input id="search-input" class="input" type="text" placeholder="Buscar por compañía..." />
+                    <input id="search-input" class="input" type="text" placeholder="Search by company..." />
                     <select id="company-filter" class="select">
                         <option value="all">All companies</option>
                     </select>
