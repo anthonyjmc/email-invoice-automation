@@ -744,6 +744,7 @@
                 {% endif %}
 
                 <form id="upload-form" action="/upload-invoice" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                     <div id="upload-zone" class="upload-zone">
                         <div class="upload-top">
                             <div class="upload-icon">↑</div>

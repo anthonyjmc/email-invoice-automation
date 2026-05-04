@@ -9,6 +9,10 @@ services:
     envVars:
       - key: SESSION_SECRET
         sync: false
+      - key: SESSION_COOKIE_SECURE
+        sync: false
+      - key: WEB_AUTH_PROVIDER
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY

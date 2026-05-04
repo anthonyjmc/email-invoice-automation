@@ -126,7 +126,8 @@
             margin-bottom: 6px;
         }
 
-        input[type="password"] {
+        input[type="password"],
+        input[type="email"] {
             width: 100%;
             padding: 11px 11px;
             border-radius: var(--radius-md);
@@ -138,11 +139,16 @@
             box-shadow: var(--shadow-inset);
         }
 
-        input[type="password"]:focus {
+        input[type="password"]:focus,
+        input[type="email"]:focus {
             box-shadow:
                 inset -3px -3px 8px #ffffff,
                 inset 3px 3px 8px #c3cfdf,
                 0 0 0 2px rgba(91, 141, 239, 0.2);
+        }
+
+        .field-gap {
+            margin-top: 12px;
         }
 
         button {
@@ -215,11 +221,41 @@
                 {% endif %}
 
                 <form action="/login" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    {% if web_auth_provider == "supabase" %}
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="username"
+                        placeholder="you@company.com"
+                        required
+                    />
+                    <div class="field-gap">
+                        <label for="password">Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            autocomplete="current-password"
+                            placeholder="••••••••••"
+                            required
+                        />
+                    </div>
+                    <button type="submit">
+                        <span>Sign in</span> →
+                    </button>
+                    <p class="hint">
+                        Sign in with your Supabase Auth user (create users in the Supabase dashboard).
+                    </p>
+                    {% else %}
                     <label for="password">Access password</label>
                     <input
                         type="password"
                         id="password"
                         name="password"
+                        autocomplete="current-password"
                         placeholder="••••••••••"
                         required
                     />
@@ -227,8 +263,9 @@
                         <span>Enter dashboard</span> →
                     </button>
                     <p class="hint">
-                        This demo is protected with a shared password. Keep it private.
+                        Legacy mode: shared password from AUTH_PASSWORD. For production, set WEB_AUTH_PROVIDER=supabase.
                     </p>
+                    {% endif %}
                 </form>
             </div>
         </div>

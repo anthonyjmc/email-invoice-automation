@@ -9,8 +9,10 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
+from app.csrf import get_or_create_csrf_token, verify_csrf_token
 from app.security import verify_password
 from app.config import settings
+from app.services.supabase_web_auth import sign_in_with_email_password, sign_out_with_access_token
 from app.services.email_parser import (
     parse_mock_email,
     parse_eml_invoice,
@@ -24,7 +26,13 @@ load_dotenv()
 templates = Jinja2Templates(directory="app/templates")
 app = FastAPI(title="Email Invoice Automation Demo")
 
-app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SESSION_SECRET,
+    max_age=settings.SESSION_MAX_AGE_SECONDS,
+    same_site=settings.SESSION_COOKIE_SAMESITE,
+    https_only=settings.SESSION_COOKIE_SECURE,
+)
 
 RATE_LIMIT_STATE: dict[str, deque[float]] = {}
 RATE_LIMIT_LOCK = Lock()
@@ -35,8 +43,9 @@ UPLOAD_RATE_LIMIT_MAX_REQUESTS = 10
 UPLOAD_RATE_LIMIT_WINDOW_SECONDS = 300
 
 LOGIN_ERROR_MESSAGES = {
-    "invalid_credentials": "Invalid password. Please try again.",
+    "invalid_credentials": "Invalid credentials. Please try again.",
     "rate_limited": "Too many login attempts. Please wait a minute and try again.",
+    "csrf_invalid": "Security check failed. Please refresh the page and try again.",
 }
 
 DASHBOARD_ERROR_MESSAGES = {
@@ -45,8 +54,8 @@ DASHBOARD_ERROR_MESSAGES = {
     "no_file_name": "Invalid upload: file name is missing.",
     "parse_failed": "Unable to process that file. Please verify format and content.",
     "save_failed": "Invoice was parsed but could not be saved. Please try again.",
-    "list_failed": "Could not load invoices right now. Please refresh and try again.",
     "rate_limited": "Too many uploads in a short period. Please wait and retry.",
+    "csrf_invalid": "Security check failed. Please refresh the page and try again.",
 }
 
 
@@ -76,10 +85,11 @@ def is_rate_limited(*, request: Request, action: str, max_requests: int, window_
 
 def require_auth(request: Request) -> bool:
     """
-    Simple session-based auth check.
-    Returns True if the user is authenticated, otherwise False.
+    Session-based auth: legacy shared password flag, or Supabase user id after Auth login.
     """
-    return bool(request.session.get("authenticated"))
+    if settings.WEB_AUTH_PROVIDER == "legacy":
+        return bool(request.session.get("authenticated"))
+    return bool(request.session.get("auth_user_id"))
 
 
 @app.get("/health")
@@ -124,21 +134,33 @@ async def login_page(request: Request):
     """
     error_code = request.query_params.get("error")
     error_message = LOGIN_ERROR_MESSAGES.get(error_code)
+    csrf_token = get_or_create_csrf_token(request)
     return templates.TemplateResponse(
         request=request,
         name="login.html",
         context={
             "request": request,
             "error_message": error_message,
+            "csrf_token": csrf_token,
+            "web_auth_provider": settings.WEB_AUTH_PROVIDER,
         },
     )
 
 
 @app.post("/login")
-async def login(request: Request, password: str = Form(...)):
+async def login(
+    request: Request,
+    csrf_token: str | None = Form(None),
+    password: str = Form(...),
+    email: str | None = Form(None),
+):
     """
-    Simple password-based login that stores an 'authenticated' flag in the session.
+    Login: legacy shared password, or Supabase Auth email/password (see WEB_AUTH_PROVIDER).
+    CSRF token required on all POST logins.
     """
+    if not verify_csrf_token(request, csrf_token):
+        return RedirectResponse("/?error=csrf_invalid", status_code=302)
+
     if is_rate_limited(
         request=request,
         action="login",
@@ -147,10 +169,29 @@ async def login(request: Request, password: str = Form(...)):
     ):
         return RedirectResponse("/?error=rate_limited", status_code=302)
 
-    if password != settings.AUTH_PASSWORD:
+    if settings.WEB_AUTH_PROVIDER == "legacy":
+        if password != settings.AUTH_PASSWORD:
+            return RedirectResponse("/?error=invalid_credentials", status_code=302)
+        request.session["authenticated"] = True
+        request.session.pop("auth_user_id", None)
+        request.session.pop("user_email", None)
+        request.session.pop("supabase_access_token", None)
+        request.session.pop("supabase_refresh_token", None)
+        return RedirectResponse("/dashboard", status_code=302)
+
+    if not email or not email.strip():
         return RedirectResponse("/?error=invalid_credentials", status_code=302)
 
-    request.session["authenticated"] = True
+    payload = await sign_in_with_email_password(email.strip(), password)
+    if not payload or not payload.get("user"):
+        return RedirectResponse("/?error=invalid_credentials", status_code=302)
+
+    user = payload["user"]
+    request.session.pop("authenticated", None)
+    request.session["auth_user_id"] = user.get("id")
+    request.session["user_email"] = user.get("email")
+    request.session["supabase_access_token"] = payload.get("access_token")
+    request.session["supabase_refresh_token"] = payload.get("refresh_token") or ""
     return RedirectResponse("/dashboard", status_code=302)
 
 
@@ -171,7 +212,7 @@ async def dashboard_page(request: Request):
         invoices = list_invoices()
     except Exception:
         invoices = []
-        error_message = DASHBOARD_ERROR_MESSAGES["list_failed"]
+    csrf_token = get_or_create_csrf_token(request)
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -180,6 +221,8 @@ async def dashboard_page(request: Request):
             "invoices": invoices,
             "error_message": error_message,
             "success_message": success_message,
+            "csrf_token": csrf_token,
+            "web_auth_provider": settings.WEB_AUTH_PROVIDER,
         },
     )
 
@@ -204,13 +247,19 @@ async def process_ui(request: Request):
 
 
 @app.post("/upload-invoice")
-async def upload_invoice(request: Request, file: UploadFile = File(...)):
+async def upload_invoice(
+    request: Request,
+    csrf_token: str | None = Form(None),
+    file: UploadFile = File(...),
+):
     """
     Upload an invoice email file (.txt, .eml, .msg, .pdf),
     parse it using the appropriate parser, and save to the database.
     """
     if not require_auth(request):
         return RedirectResponse("/?error=auth_required", status_code=302)
+    if not verify_csrf_token(request, csrf_token):
+        return RedirectResponse("/dashboard?error=csrf_invalid", status_code=302)
     if is_rate_limited(
         request=request,
         action="upload_invoice",
@@ -259,6 +308,13 @@ async def logout(request: Request):
     """
     Clear the session and redirect back to the login page.
     """
+    if settings.WEB_AUTH_PROVIDER == "supabase":
+        access_token = request.session.get("supabase_access_token")
+        if isinstance(access_token, str) and access_token:
+            try:
+                await sign_out_with_access_token(access_token)
+            except Exception:
+                pass
     request.session.clear()
     return RedirectResponse("/", status_code=302)
 

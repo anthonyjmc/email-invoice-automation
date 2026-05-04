@@ -84,6 +84,8 @@ cp .env.example .env  # Windows PowerShell: Copy-Item .env.example .env
 
 Update `.env` with your real Supabase and Azure OpenAI credentials before starting the server. Set `SESSION_SECRET` to a long random string (at least 32 characters), unique per environment—for example `openssl rand -hex 32`.
 
+**Auth:** `WEB_AUTH_PROVIDER=legacy` uses a shared `AUTH_PASSWORD` (good for demos). For production, use `WEB_AUTH_PROVIDER=supabase` and create users under **Supabase → Authentication**; then sign in with email and password. Set `SESSION_COOKIE_SECURE=true` when serving the app over HTTPS.
+
 Run Locally:
 uvicorn app.main:app --reload
 
