@@ -88,6 +88,13 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 
 **Uploads:** Max size is controlled with `MAX_UPLOAD_FILE_BYTES` (default 10 MB). The server checks **content signatures** (not only the file extension), rejects unsafe names, writes uploads under a **random temp filename**, and deletes the temp file after processing. Optional **ClamAV** (or any CLI): set `UPLOAD_AV_SCAN_ENABLED=true`, `UPLOAD_AV_SCAN_COMMAND` with a `{path}` placeholder (e.g. `clamscan --no-summary {path}`), and `UPLOAD_AV_SCAN_PDF_ONLY=true` to scan PDFs only.
 
+### Supabase in production (RLS, keys, migrations, backups)
+
+- **Migrations:** SQL lives under `supabase/migrations/`. Apply with the [Supabase CLI](https://supabase.com/docs/guides/cli) (`supabase link` then `supabase db push`) or by running the SQL in the Supabase SQL Editor. The included migration creates `public.invoices`, adds `user_id` → `auth.users`, enables **RLS**, and adds policies so **`authenticated`** users can only **select/insert/update/delete their own rows** (`user_id = auth.uid()`).
+- **Anon vs service role:** The **anon** key is safe to ship to clients only if you also rely on strict RLS and pass the user JWT (this app never sends the anon key to the browser for DB calls). The **service role** key **bypasses RLS** and must exist **only on the server** (e.g. `SUPABASE_SERVICE_ROLE_KEY` in Render). With **`WEB_AUTH_PROVIDER=supabase`**, the API uses the user session JWT so RLS applies per user. With **`WEB_AUTH_PROVIDER=legacy`** and RLS enabled, set **`SUPABASE_SERVICE_ROLE_KEY`** on the server so dashboard/API writes still work; machine routes (`/invoices`, `/process-mock-email`) already prefer the service role when it is set.
+- **Backups:** On hosted Supabase, use project **Backups** (paid tiers include PITR). Export critical tables periodically if you need an extra copy outside Supabase.
+- **Hardening:** Rotate keys on incident, restrict Dashboard access, review **Auth** providers and **Database** logs, and add more policies (e.g. separate roles) as the product grows.
+
 Run Locally:
 uvicorn app.main:app --reload
 

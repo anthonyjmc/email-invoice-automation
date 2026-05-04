@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from app.csrf import get_or_create_csrf_token, verify_csrf_token
 from app.security import verify_password
 from app.config import settings
+from app.db import get_supabase_for_api, get_supabase_for_request
 from app.services.supabase_web_auth import sign_in_with_email_password, sign_out_with_access_token
 from app.services.email_parser import (
     parse_mock_email,
@@ -97,6 +98,14 @@ def is_rate_limited(*, request: Request, action: str, max_requests: int, window_
     return False
 
 
+def invoice_user_id_for_row(request: Request) -> str | None:
+    """Attach Supabase auth user id to new invoice rows when using Supabase Auth."""
+    if settings.WEB_AUTH_PROVIDER != "supabase":
+        return None
+    uid = request.session.get("auth_user_id")
+    return str(uid) if uid else None
+
+
 def require_auth(request: Request) -> bool:
     """
     Session-based auth: legacy shared password flag, or Supabase user id after Auth login.
@@ -128,7 +137,8 @@ async def process_mock_email(_: None = Depends(verify_password)):
     #   if isinstance(data.get("invoice_date"), (date, datetime)):
     #       data["invoice_date"] = data["invoice_date"].isoformat()
 
-    save_invoice(data)
+    db = get_supabase_for_api()
+    save_invoice(data, client=db, user_id=None)
     return {"status": "saved", "invoice": data}
 
 
@@ -138,7 +148,8 @@ async def get_invoices(_: None = Depends(verify_password)):
     Return all invoices as JSON.
     This endpoint uses the same basic password verification as /process-mock-email.
     """
-    return {"invoices": list_invoices()}
+    db = get_supabase_for_api()
+    return {"invoices": list_invoices(client=db)}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -222,8 +233,9 @@ async def dashboard_page(request: Request):
     success_code = request.query_params.get("success")
     error_message = DASHBOARD_ERROR_MESSAGES.get(error_code)
     success_message = "Invoice processed successfully." if success_code == "uploaded" else None
+    db = get_supabase_for_request(request)
     try:
-        invoices = list_invoices()
+        invoices = list_invoices(client=db)
     except Exception:
         invoices = []
     csrf_token = get_or_create_csrf_token(request)
@@ -249,12 +261,14 @@ async def process_ui(request: Request):
     if not require_auth(request):
         return RedirectResponse("/?error=auth_required", status_code=302)
 
+    db = get_supabase_for_request(request)
+    uid = invoice_user_id_for_row(request)
     try:
         data = parse_mock_email("examples/sample_invoice_email.txt")
     except Exception:
         return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
     try:
-        save_invoice(data)
+        save_invoice(data, client=db, user_id=uid)
     except Exception:
         return RedirectResponse("/dashboard?error=save_failed", status_code=302)
     return RedirectResponse("/dashboard?success=uploaded", status_code=302)
@@ -324,8 +338,10 @@ async def upload_invoice(
         except Exception:
             return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
 
+        db = get_supabase_for_request(request)
+        uid = invoice_user_id_for_row(request)
         try:
-            save_invoice(data)
+            save_invoice(data, client=db, user_id=uid)
         except Exception:
             return RedirectResponse("/dashboard?error=save_failed", status_code=302)
         return RedirectResponse("/dashboard?success=uploaded", status_code=302)

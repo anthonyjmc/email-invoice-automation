@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 WebAuthProvider = Literal["legacy", "supabase"]
@@ -34,7 +34,18 @@ class Settings(BaseSettings):
     APP_PASSWORD: str
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: str | None = Field(
+        default=None,
+        description="Server-only key; bypasses RLS. Use for legacy auth + RLS, or admin API. Never ship to the browser.",
+    )
     AUTH_PASSWORD: str
+
+    @field_validator("SUPABASE_SERVICE_ROLE_KEY", mode="before")
+    @classmethod
+    def empty_service_role_to_none(cls, value: object) -> object:
+        if value == "":
+            return None
+        return value
 
     AZURE_OPENAI_ENDPOINT: str
     AZURE_OPENAI_API_KEY: str
