@@ -6,6 +6,7 @@ from fastapi import FastAPI, Depends, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from app.security_headers import SecurityHeadersMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
 from app.csrf import get_or_create_csrf_token, verify_csrf_token
@@ -59,6 +60,8 @@ app.add_middleware(
     same_site=settings.SESSION_COOKIE_SAMESITE,
     https_only=settings.SESSION_COOKIE_SECURE,
 )
+if settings.SECURITY_HEADERS_ENABLED:
+    app.add_middleware(SecurityHeadersMiddleware)
 
 LOGIN_RATE_LIMIT_MAX_REQUESTS = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60

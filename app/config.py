@@ -94,6 +94,46 @@ class Settings(BaseSettings):
             return None
         return value
 
+    SECURITY_HEADERS_ENABLED: bool = Field(
+        default=True,
+        description="Send security headers (CSP, X-Content-Type-Options, etc.) on every response.",
+    )
+    SECURITY_ENABLE_HSTS: bool = Field(
+        default=False,
+        description="Send Strict-Transport-Security. Enable only when the app is served over HTTPS (e.g. behind TLS-terminating proxy).",
+    )
+    SECURITY_HSTS_MAX_AGE: int = Field(default=31536000, ge=0, description="HSTS max-age in seconds (default 1 year).")
+    SECURITY_HSTS_INCLUDE_SUBDOMAINS: bool = Field(default=True)
+    SECURITY_HSTS_PRELOAD: bool = Field(
+        default=False,
+        description="Add preload directive only if you intend to submit the domain to the HSTS preload list.",
+    )
+    SECURITY_CSP: str | None = Field(
+        default=None,
+        description="Override Content-Security-Policy. If unset, a default compatible with inline Jinja templates is used.",
+    )
+    SECURITY_CSP_UPGRADE_INSECURE: bool = Field(
+        default=False,
+        description="Append upgrade-insecure-requests to CSP (useful behind TLS proxies).",
+    )
+    SECURITY_X_FRAME_OPTIONS: str = Field(default="DENY", description="X-Frame-Options value (DENY, SAMEORIGIN, etc.).")
+    SECURITY_REFERRER_POLICY: str = Field(default="strict-origin-when-cross-origin")
+    SECURITY_PERMISSIONS_POLICY: str = Field(
+        default="camera=(), microphone=(), geolocation=(), payment=()",
+        description="Permissions-Policy (Feature-Policy successor) sent to browsers.",
+    )
+    SECURITY_CROSS_ORIGIN_OPENER_POLICY: str | None = Field(
+        default="same-origin",
+        description="COOP header; set empty string to omit.",
+    )
+
+    @field_validator("SECURITY_CROSS_ORIGIN_OPENER_POLICY", mode="before")
+    @classmethod
+    def empty_coop_to_none(cls, value: object) -> object:
+        if value == "":
+            return None
+        return value
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

@@ -11,6 +11,8 @@ services:
         sync: false
       - key: SESSION_COOKIE_SECURE
         sync: false
+      - key: SECURITY_ENABLE_HSTS
+        sync: false
       - key: WEB_AUTH_PROVIDER
         sync: false
       - key: SUPABASE_URL

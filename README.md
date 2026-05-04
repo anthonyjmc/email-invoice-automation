@@ -95,6 +95,12 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 - **Behind a proxy:** set **`RATE_LIMIT_TRUST_X_FORWARDED_FOR=true`** only if you trust the proxy to set `X-Forwarded-For` correctly.
 - **Edge:** prefer additional limits at **Cloudflare**, API Gateway, or your load balancer so abuse never reaches the app.
 
+### HTTPS and security headers
+
+- **TLS:** Terminate HTTPS at your **reverse proxy** (nginx, Caddy, Traefik, cloud load balancer) and forward HTTP to Uvicorn on a private network, or use TLS passthrough.
+- **Headers:** The app can send **`X-Content-Type-Options: nosniff`**, **`X-Frame-Options`**, **`Referrer-Policy`**, **`Permissions-Policy`**, **`Content-Security-Policy`** (default allows inline `script`/`style` for current Jinja pages; override with **`SECURITY_CSP`** for stricter policies), optional **`Cross-Origin-Opener-Policy`**, and **`Strict-Transport-Security` (HSTS)** when **`SECURITY_ENABLE_HSTS=true`** (only after you are sure every user hits HTTPS; use long **`SECURITY_HSTS_MAX_AGE`** and optionally **`SECURITY_HSTS_PRELOAD`** if you submit to the preload list).
+- **Disable:** set **`SECURITY_HEADERS_ENABLED=false`** if your edge already injects the same headers and you want to avoid duplicates.
+
 ### Supabase in production (RLS, keys, migrations, backups)
 
 - **Migrations:** SQL lives under `supabase/migrations/`. Apply with the [Supabase CLI](https://supabase.com/docs/guides/cli) (`supabase link` then `supabase db push`) or by running the SQL in the Supabase SQL Editor. The included migration creates `public.invoices`, adds `user_id` → `auth.users`, enables **RLS**, and adds policies so **`authenticated`** users can only **select/insert/update/delete their own rows** (`user_id = auth.uid()`).
