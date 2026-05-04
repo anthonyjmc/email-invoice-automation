@@ -40,6 +40,7 @@ from app.services.upload_security import (
 )
 from app.rate_limit import check_rate_limited
 from app.metrics import render_metrics_payload
+from app.error_handlers import register_exception_handlers
 
 
 @asynccontextmanager
@@ -71,6 +72,7 @@ app.add_middleware(
 if settings.SECURITY_HEADERS_ENABLED:
     app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(ObservabilityMiddleware)
+register_exception_handlers(app)
 
 LOGIN_RATE_LIMIT_MAX_REQUESTS = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60
@@ -81,6 +83,7 @@ LOGIN_ERROR_MESSAGES = {
     "invalid_credentials": "Invalid credentials. Please try again.",
     "rate_limited": "Too many login attempts. Please wait a minute and try again.",
     "csrf_invalid": "Security check failed. Please refresh the page and try again.",
+    "server_error": "Something went wrong. Please try again later.",
 }
 
 DASHBOARD_ERROR_MESSAGES = {
@@ -98,6 +101,7 @@ DASHBOARD_ERROR_MESSAGES = {
     "av_unavailable": "Antivirus scanner is not available on the server.",
     "av_timeout": "Antivirus scan timed out. Try again later.",
     "av_rejected": "File failed antivirus scan and was not processed.",
+    "server_error": "Something went wrong on our side. Please try again later.",
 }
 
 

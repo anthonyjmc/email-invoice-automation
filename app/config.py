@@ -152,6 +152,10 @@ class Settings(BaseSettings):
         default=True,
         description="Emit one structured log line per HTTP request (method, path, status, duration_ms, correlation_id).",
     )
+    APP_DEBUG: bool = Field(
+        default=False,
+        description="If true, 422 validation responses include field-level errors (local dev only). Never enable in production.",
+    )
 
     @field_validator("LOG_LEVEL", mode="before")
     @classmethod
