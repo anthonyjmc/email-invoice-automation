@@ -1,7 +1,7 @@
 import os
-import time
-from collections import deque
-from threading import Lock
+from contextlib import asynccontextmanager
+
+import redis.asyncio as redis_async
 from fastapi import FastAPI, Depends, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -28,11 +28,29 @@ from app.services.upload_security import (
     run_optional_antivirus_scan,
     sniff_content_kind,
 )
+from app.rate_limit import check_rate_limited
 
 load_dotenv()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_client = None
+    if settings.REDIS_URL:
+        redis_client = redis_async.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+        )
+        app.state.redis = redis_client
+    else:
+        app.state.redis = None
+    yield
+    if redis_client is not None:
+        await redis_client.aclose()
+
+
 templates = Jinja2Templates(directory="app/templates")
-app = FastAPI(title="Email Invoice Automation Demo")
+app = FastAPI(title="Email Invoice Automation Demo", lifespan=lifespan)
 
 app.add_middleware(
     SessionMiddleware,
@@ -41,9 +59,6 @@ app.add_middleware(
     same_site=settings.SESSION_COOKIE_SAMESITE,
     https_only=settings.SESSION_COOKIE_SECURE,
 )
-
-RATE_LIMIT_STATE: dict[str, deque[float]] = {}
-RATE_LIMIT_LOCK = Lock()
 
 LOGIN_RATE_LIMIT_MAX_REQUESTS = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60
@@ -74,30 +89,6 @@ DASHBOARD_ERROR_MESSAGES = {
 }
 
 
-def get_client_ip(request: Request) -> str:
-    client = request.client
-    if not client:
-        return "unknown"
-    return client.host or "unknown"
-
-
-def is_rate_limited(*, request: Request, action: str, max_requests: int, window_seconds: int) -> bool:
-    now = time.monotonic()
-    client_ip = get_client_ip(request)
-    state_key = f"{action}:{client_ip}"
-    with RATE_LIMIT_LOCK:
-        request_times = RATE_LIMIT_STATE.get(state_key)
-        if request_times is None:
-            request_times = deque()
-            RATE_LIMIT_STATE[state_key] = request_times
-        while request_times and now - request_times[0] > window_seconds:
-            request_times.popleft()
-        if len(request_times) >= max_requests:
-            return True
-        request_times.append(now)
-    return False
-
-
 def invoice_user_id_for_row(request: Request) -> str | None:
     """Attach Supabase auth user id to new invoice rows when using Supabase Auth."""
     if settings.WEB_AUTH_PROVIDER != "supabase":
@@ -117,7 +108,10 @@ def require_auth(request: Request) -> bool:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "rate_limit_backend": "redis" if settings.REDIS_URL else "memory",
+    }
 
 
 @app.post("/process-mock-email")
@@ -186,8 +180,8 @@ async def login(
     if not verify_csrf_token(request, csrf_token):
         return RedirectResponse("/?error=csrf_invalid", status_code=302)
 
-    if is_rate_limited(
-        request=request,
+    if await check_rate_limited(
+        request,
         action="login",
         max_requests=LOGIN_RATE_LIMIT_MAX_REQUESTS,
         window_seconds=LOGIN_RATE_LIMIT_WINDOW_SECONDS,
@@ -288,8 +282,8 @@ async def upload_invoice(
         return RedirectResponse("/?error=auth_required", status_code=302)
     if not verify_csrf_token(request, csrf_token):
         return RedirectResponse("/dashboard?error=csrf_invalid", status_code=302)
-    if is_rate_limited(
-        request=request,
+    if await check_rate_limited(
+        request,
         action="upload_invoice",
         max_requests=UPLOAD_RATE_LIMIT_MAX_REQUESTS,
         window_seconds=UPLOAD_RATE_LIMIT_WINDOW_SECONDS,

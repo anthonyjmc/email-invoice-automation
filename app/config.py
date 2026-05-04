@@ -74,6 +74,26 @@ class Settings(BaseSettings):
         description="When AV scan is enabled, only run it for .pdf uploads (recommended).",
     )
 
+    REDIS_URL: str | None = Field(
+        default=None,
+        description="If set, rate limits use Redis (shared across workers). Example: redis://localhost:6379/0",
+    )
+    RATE_LIMIT_REDIS_KEY_PREFIX: str = Field(
+        default="rl:v1",
+        description="Prefix for Redis rate-limit keys.",
+    )
+    RATE_LIMIT_TRUST_X_FORWARDED_FOR: bool = Field(
+        default=False,
+        description="If True, use first X-Forwarded-For hop as client IP (set True behind a trusted reverse proxy).",
+    )
+
+    @field_validator("REDIS_URL", mode="before")
+    @classmethod
+    def empty_redis_url_to_none(cls, value: object) -> object:
+        if value == "":
+            return None
+        return value
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

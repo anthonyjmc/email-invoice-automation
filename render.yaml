@@ -19,5 +19,7 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: REDIS_URL
+        sync: false
       - key: APP_PASSWORD
         sync: false

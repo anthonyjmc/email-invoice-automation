@@ -88,6 +88,13 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 
 **Uploads:** Max size is controlled with `MAX_UPLOAD_FILE_BYTES` (default 10 MB). The server checks **content signatures** (not only the file extension), rejects unsafe names, writes uploads under a **random temp filename**, and deletes the temp file after processing. Optional **ClamAV** (or any CLI): set `UPLOAD_AV_SCAN_ENABLED=true`, `UPLOAD_AV_SCAN_COMMAND` with a `{path}` placeholder (e.g. `clamscan --no-summary {path}`), and `UPLOAD_AV_SCAN_PDF_ONLY=true` to scan PDFs only.
 
+### Rate limiting (multi-instance)
+
+- **Default:** in-memory counters (one per process; fine for a single worker).
+- **Production:** set **`REDIS_URL`** (e.g. `redis://:password@host:6379/0`) so login and upload limits are shared across **all workers/replicas**. Keys use the prefix **`RATE_LIMIT_REDIS_KEY_PREFIX`** (default `rl:v1`).
+- **Behind a proxy:** set **`RATE_LIMIT_TRUST_X_FORWARDED_FOR=true`** only if you trust the proxy to set `X-Forwarded-For` correctly.
+- **Edge:** prefer additional limits at **Cloudflare**, API Gateway, or your load balancer so abuse never reaches the app.
+
 ### Supabase in production (RLS, keys, migrations, backups)
 
 - **Migrations:** SQL lives under `supabase/migrations/`. Apply with the [Supabase CLI](https://supabase.com/docs/guides/cli) (`supabase link` then `supabase db push`) or by running the SQL in the Supabase SQL Editor. The included migration creates `public.invoices`, adds `user_id` → `auth.users`, enables **RLS**, and adds policies so **`authenticated`** users can only **select/insert/update/delete their own rows** (`user_id = auth.uid()`).

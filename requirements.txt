@@ -12,3 +12,4 @@ itsdangerous
 extract-msg
 openai
 pypdf
+redis>=5.0
