@@ -86,6 +86,8 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 
 **Auth:** `WEB_AUTH_PROVIDER=legacy` uses a shared `AUTH_PASSWORD` (good for demos). For production, use `WEB_AUTH_PROVIDER=supabase` and create users under **Supabase → Authentication**; then sign in with email and password. Set `SESSION_COOKIE_SECURE=true` when serving the app over HTTPS.
 
+**Uploads:** Max size is controlled with `MAX_UPLOAD_FILE_BYTES` (default 10 MB). The server checks **content signatures** (not only the file extension), rejects unsafe names, writes uploads under a **random temp filename**, and deletes the temp file after processing. Optional **ClamAV** (or any CLI): set `UPLOAD_AV_SCAN_ENABLED=true`, `UPLOAD_AV_SCAN_COMMAND` with a `{path}` placeholder (e.g. `clamscan --no-summary {path}`), and `UPLOAD_AV_SCAN_PDF_ONLY=true` to scan PDFs only.
+
 Run Locally:
 uvicorn app.main:app --reload
 

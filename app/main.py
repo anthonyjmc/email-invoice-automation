@@ -1,4 +1,3 @@
-import tempfile
 import os
 import time
 from collections import deque
@@ -20,6 +19,14 @@ from app.services.email_parser import (
     parse_pdf_invoice,
 )
 from app.services.invoice_service import save_invoice, list_invoices
+from app.services.upload_security import (
+    build_safe_temp_path,
+    extension_from_upload_filename,
+    read_upload_with_size_limit,
+    reconcile_extension,
+    run_optional_antivirus_scan,
+    sniff_content_kind,
+)
 
 load_dotenv()
 
@@ -52,10 +59,17 @@ DASHBOARD_ERROR_MESSAGES = {
     "auth_required": "Please log in to continue.",
     "unsupported": "Unsupported file type. Use .txt, .eml, .msg, or .pdf.",
     "no_file_name": "Invalid upload: file name is missing.",
+    "unsafe_filename": "Invalid file name. Remove path characters and try again.",
+    "file_too_large": "File is too large. Reduce size and try again.",
+    "invalid_file_type": "File content does not match the declared type (or is not a supported invoice format).",
     "parse_failed": "Unable to process that file. Please verify format and content.",
     "save_failed": "Invoice was parsed but could not be saved. Please try again.",
     "rate_limited": "Too many uploads in a short period. Please wait and retry.",
     "csrf_invalid": "Security check failed. Please refresh the page and try again.",
+    "av_misconfigured": "Antivirus scan is enabled but not configured. Set UPLOAD_AV_SCAN_COMMAND.",
+    "av_unavailable": "Antivirus scanner is not available on the server.",
+    "av_timeout": "Antivirus scan timed out. Try again later.",
+    "av_rejected": "File failed antivirus scan and was not processed.",
 }
 
 
@@ -267,40 +281,59 @@ async def upload_invoice(
         window_seconds=UPLOAD_RATE_LIMIT_WINDOW_SECONDS,
     ):
         return RedirectResponse("/dashboard?error=rate_limited", status_code=302)
-    if not file.filename:
-        return RedirectResponse("/dashboard?error=no_file_name", status_code=302)
+    declared_ext, name_error = extension_from_upload_filename(file.filename)
+    if name_error:
+        return RedirectResponse(f"/dashboard?error={name_error}", status_code=302)
 
-    # Save file temporarily
-    temp_dir = tempfile.gettempdir()
-    file_path = os.path.join(temp_dir, file.filename)
+    content, read_error = await read_upload_with_size_limit(file, settings.MAX_UPLOAD_FILE_BYTES)
+    if read_error:
+        return RedirectResponse(f"/dashboard?error={read_error}", status_code=302)
 
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    sniffed = sniff_content_kind(content)
+    canonical_ext, kind_error = reconcile_extension(declared_ext=declared_ext, sniffed=sniffed)
+    if kind_error:
+        return RedirectResponse(f"/dashboard?error={kind_error}", status_code=302)
 
-    # Decide parser based on file extension
-    ext = file.filename.lower().split(".")[-1]
-
+    file_path = build_safe_temp_path(canonical_ext)
     try:
-        if ext == "txt":
-            data = parse_mock_email(file_path)
-        elif ext == "eml":
-            data = parse_eml_invoice(file_path)
-        elif ext == "msg":
-            data = parse_msg_invoice(file_path)
-        elif ext == "pdf":
-            data = parse_pdf_invoice(file_path)
-        else:
-            # Unsupported file type
-            return RedirectResponse("/dashboard?error=unsupported", status_code=302)
-    except Exception:
-        return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
+        with open(file_path, "wb") as f:
+            f.write(content)
 
-    # Save parsed invoice data to the database
-    try:
-        save_invoice(data)
-    except Exception:
-        return RedirectResponse("/dashboard?error=save_failed", status_code=302)
-    return RedirectResponse("/dashboard?success=uploaded", status_code=302)
+        av_error = run_optional_antivirus_scan(
+            file_path=file_path,
+            file_extension=canonical_ext,
+            enabled=settings.UPLOAD_AV_SCAN_ENABLED,
+            pdf_only=settings.UPLOAD_AV_SCAN_PDF_ONLY,
+            command_template=settings.UPLOAD_AV_SCAN_COMMAND,
+            timeout_seconds=settings.UPLOAD_AV_SCAN_TIMEOUT_SECONDS,
+        )
+        if av_error:
+            return RedirectResponse(f"/dashboard?error={av_error}", status_code=302)
+
+        try:
+            if canonical_ext == "txt":
+                data = parse_mock_email(file_path)
+            elif canonical_ext == "eml":
+                data = parse_eml_invoice(file_path)
+            elif canonical_ext == "msg":
+                data = parse_msg_invoice(file_path)
+            elif canonical_ext == "pdf":
+                data = parse_pdf_invoice(file_path)
+            else:
+                return RedirectResponse("/dashboard?error=unsupported", status_code=302)
+        except Exception:
+            return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
+
+        try:
+            save_invoice(data)
+        except Exception:
+            return RedirectResponse("/dashboard?error=save_failed", status_code=302)
+        return RedirectResponse("/dashboard?success=uploaded", status_code=302)
+    finally:
+        try:
+            os.unlink(file_path)
+        except OSError:
+            pass
 
 
 @app.get("/logout")

@@ -40,6 +40,29 @@ class Settings(BaseSettings):
     AZURE_OPENAI_API_KEY: str
     AZURE_OPENAI_DEPLOYMENT: str
 
+    MAX_UPLOAD_FILE_BYTES: int = Field(
+        default=10 * 1024 * 1024,
+        ge=1024,
+        description="Maximum upload size in bytes (default 10 MB).",
+    )
+    UPLOAD_AV_SCAN_ENABLED: bool = Field(
+        default=False,
+        description="If true, run optional antivirus command after upload (see UPLOAD_AV_SCAN_COMMAND).",
+    )
+    UPLOAD_AV_SCAN_COMMAND: str | None = Field(
+        default=None,
+        description='Shell command with {path} placeholder, e.g. clamscan --no-summary {path}',
+    )
+    UPLOAD_AV_SCAN_TIMEOUT_SECONDS: int = Field(
+        default=120,
+        ge=5,
+        description="Timeout for optional AV subprocess.",
+    )
+    UPLOAD_AV_SCAN_PDF_ONLY: bool = Field(
+        default=True,
+        description="When AV scan is enabled, only run it for .pdf uploads (recommended).",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
