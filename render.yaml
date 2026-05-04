@@ -1,3 +1,6 @@
+# Render Blueprint: lists every startup-required env var (Pydantic Settings) plus common
+# production keys. sync: false = set values in the Render dashboard. See DEPLOYMENT.md.
+# Optional: switch this service to env: docker + dockerfilePath: ./Dockerfile for container deploys.
 services:
   - type: web
     name: email-invoice-agent
@@ -7,25 +10,46 @@ services:
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port 10000"
     plan: free
     envVars:
+      # --- Required at startup (see DEPLOYMENT.md "Required environment variables") ---
       - key: SESSION_SECRET
         sync: false
-      - key: SESSION_COOKIE_SECURE
-        sync: false
-      - key: SECURITY_ENABLE_HSTS
-        sync: false
-      - key: LOG_FORMAT
-        sync: false
-      - key: OBSERVABILITY_METRICS_ENABLED
-        sync: false
-      - key: WEB_AUTH_PROVIDER
+      - key: APP_PASSWORD
         sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: AUTH_PASSWORD
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        sync: false
+      # --- Strongly recommended in production ---
+      - key: WEB_AUTH_PROVIDER
+        sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SESSION_COOKIE_SECURE
         sync: false
       - key: REDIS_URL
         sync: false
-      - key: APP_PASSWORD
+      - key: LOG_FORMAT
+        sync: false
+      - key: SECURITY_ENABLE_HSTS
+        sync: false
+      # --- Optional tuning / observability ---
+      - key: OBSERVABILITY_METRICS_ENABLED
+        sync: false
+      - key: METRICS_BEARER_TOKEN
+        sync: false
+      - key: SESSION_MAX_AGE_SECONDS
+        sync: false
+      - key: SESSION_COOKIE_SAMESITE
+        sync: false
+      - key: UPLOAD_AV_SCAN_ENABLED
+        sync: false
+      - key: UPLOAD_AV_SCAN_COMMAND
         sync: false

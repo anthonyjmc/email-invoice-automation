@@ -1,0 +1,29 @@
+# Local / staging parity with optional Redis (shared rate limits).
+# 1. cp .env.example .env  and fill required keys (see DEPLOYMENT.md).
+# 2a. In-memory rate limits:  docker compose up --build web
+# 2b. With Redis: set REDIS_URL=redis://redis:6379/0 in .env, then:
+#     docker compose --profile redis up --build
+#
+# ClamAV: build the image with INSTALL_CLAMAV=true (see Dockerfile) and configure
+# UPLOAD_AV_SCAN_* in .env; refresh signatures separately (e.g. freshclam).
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+
+  redis:
+    profiles: ["redis"]
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

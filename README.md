@@ -103,6 +103,10 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 
 **Uploads:** Max size is controlled with `MAX_UPLOAD_FILE_BYTES` (default 10 MB). The server checks **content signatures** (not only the file extension), rejects unsafe names, writes uploads under a **random temp filename**, and deletes the temp file after processing. Optional **ClamAV** (or any CLI): set `UPLOAD_AV_SCAN_ENABLED=true`, `UPLOAD_AV_SCAN_COMMAND` with a `{path}` placeholder (e.g. `clamscan --no-summary {path}`), and `UPLOAD_AV_SCAN_PDF_ONLY=true` to scan PDFs only.
 
+### Docker (optional)
+
+For a reproducible runtime (K8s, ACI, or local parity), use the root **[`Dockerfile`](Dockerfile)** and **[`docker-compose.yml`](docker-compose.yml)**. Details, ClamAV build-arg, and Redis profile → **[DEPLOYMENT.md](DEPLOYMENT.md)** (section *Docker and Compose*).
+
 ### Rate limiting (multi-instance)
 
 - **Default:** in-memory counters (one per process; fine for a single worker).

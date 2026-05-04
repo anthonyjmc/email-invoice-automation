@@ -19,9 +19,15 @@ The app fails at startup if any of these are missing or invalid (Pydantic `Setti
 | `AZURE_OPENAI_API_KEY` | Azure OpenAI API key. |
 | `AZURE_OPENAI_DEPLOYMENT` | Deployment name (model deployment in Azure). |
 
-Copy from [`.env.example`](.env.example) and fill real values. **`render.yaml`** lists only a subset of keys; add the rest in the host’s environment UI (Render **Environment**, Azure **Configuration**, etc.).
+Copy from [`.env.example`](.env.example) and fill real values. **[`render.yaml`](render.yaml)** declares the same **required** keys as the table above (plus common optional keys); set each value in the Render **Environment** tab when using a Blueprint.
 
 **Reproducible installs:** use pinned [`requirements.txt`](requirements.txt). For local tests and lint: `pip install -r requirements.txt -r requirements-dev.txt` (see README **Tests and CI**).
+
+### Docker and Compose
+
+- **[`Dockerfile`](Dockerfile)** — Python 3.12-slim (aligned with CI), installs [`requirements.txt`](requirements.txt), copies `app/` and `examples/`. Default command: `uvicorn` on port **8000**. Build with optional ClamAV CLI: `docker build --build-arg INSTALL_CLAMAV=true -t invoice-app .` Virus definitions are **not** bundled; run `freshclam` (or your org’s image update process) before relying on scans in production.
+- **[`docker-compose.yml`](docker-compose.yml)** — `web` service using the Dockerfile; optional **`redis`** profile (`docker compose --profile redis up --build`) when `.env` sets `REDIS_URL=redis://redis:6379/0`.
+- **Render:** the sample Blueprint keeps **`env: python`** + `pip install` for a small cold start; you can instead set **`env: docker`**, **`dockerfilePath: ./Dockerfile`**, and **`dockerContext: .`** on the web service if you want the same image as Kubernetes / Azure Container Instances.
 
 ### Machine API keys, idempotency, pagination
 
