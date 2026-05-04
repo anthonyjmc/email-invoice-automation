@@ -95,6 +95,15 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 - **Behind a proxy:** set **`RATE_LIMIT_TRUST_X_FORWARDED_FOR=true`** only if you trust the proxy to set `X-Forwarded-For` correctly.
 - **Edge:** prefer additional limits at **Cloudflare**, API Gateway, or your load balancer so abuse never reaches the app.
 
+### Observability (logs, correlation IDs, metrics, alerts)
+
+- **Structured logs:** Set **`LOG_FORMAT=json`** so each line is one JSON object (easy to ship to Datadog, CloudWatch Logs, Grafana Loki, ELK). Use **`LOG_LEVEL`** (`INFO`, `DEBUG`, …). With JSON logs, prefer **`uvicorn app.main:app --no-access-log`** to avoid duplicate unstructured access lines (the app emits **`http_request`** with `method`, `path`, `route`, `status_code`, `duration_ms`, **`correlation_id`**).
+- **Correlation IDs:** Every request gets an **`X-Request-ID`** (reuses incoming **`X-Request-ID`** or **`X-Correlation-ID`** when present). The same value appears in access logs and in **`GET /health`** as `correlation_id` when available—use it to tie browser → proxy → app → DB logs during an incident.
+- **Metrics:** Enable **`OBSERVABILITY_METRICS_ENABLED=true`** to expose **`GET /metrics`** in Prometheus format: **`http_server_requests_total`** (labels `method`, `route`, **`status_class`** e.g. `5xx`) and **`http_server_request_duration_seconds`** histogram. Protect **`/metrics`** (private network, IP allowlist, or auth sidecar); do not expose it on the public internet without controls.
+- **Queues:** This service does not run a job queue. If you add **Celery / RQ / Dramatiq**, export queue depth and worker failures as separate metrics and scrape workers, not only the API process.
+- **Health for alerting:** **`GET /health`** returns **`status: degraded`** when **`REDIS_URL`** is set but Redis is down or unreachable (`redis: error`), so uptime checks can page before rate limits silently fall back to per-process memory.
+- **Alert ideas (Prometheus / Alertmanager):** alert on **`rate(http_server_requests_total{status_class="5xx"}[5m]) > 0`** (or a threshold), high **`histogram_quantile(0.99, …http_server_request_duration_seconds…)`**, **`health` JSON `status != ok`** from a blackbox or synthetic check, and sustained **`rate_limit_redis_fallback`** log volume (Redis instability).
+
 ### HTTPS and security headers
 
 - **TLS:** Terminate HTTPS at your **reverse proxy** (nginx, Caddy, Traefik, cloud load balancer) and forward HTTP to Uvicorn on a private network, or use TLS passthrough.
@@ -110,6 +119,12 @@ Update `.env` with your real Supabase and Azure OpenAI credentials before starti
 
 Run Locally:
 uvicorn app.main:app --reload
+
+Production-style logging (JSON + single access log from the app):
+
+```bash
+LOG_FORMAT=json uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
+```
 
 Then open:
 👉 http://127.0.0.1:8000

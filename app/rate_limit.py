@@ -12,9 +12,12 @@ from collections import deque
 from threading import Lock
 
 import redis.asyncio as redis_async
+import structlog
 from fastapi import Request
 
 from app.config import settings
+
+log = structlog.get_logger(__name__)
 
 _LOCK = Lock()
 _MEMORY_STATE: dict[str, deque[float]] = {}
@@ -74,5 +77,11 @@ async def check_rate_limited(
         try:
             return await _redis_is_limited(redis_client, client_ip, action, max_requests, window_seconds)
         except Exception:
+            log.warning(
+                "rate_limit_redis_fallback",
+                action=action,
+                client_ip=client_ip,
+                exc_info=True,
+            )
             return _memory_is_limited(client_ip, action, max_requests, window_seconds)
     return _memory_is_limited(client_ip, action, max_requests, window_seconds)

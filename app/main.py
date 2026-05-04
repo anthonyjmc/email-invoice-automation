@@ -2,13 +2,22 @@ import os
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis_async
-from fastapi import FastAPI, Depends, Request, Form, File, UploadFile
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from app.logging_config import configure_logging
+
+configure_logging()
+
+from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.responses import Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from app.security_headers import SecurityHeadersMiddleware
+from app.observability import ObservabilityMiddleware
 from pathlib import Path
-from dotenv import load_dotenv
 from app.csrf import get_or_create_csrf_token, verify_csrf_token
 from app.security import verify_password
 from app.config import settings
@@ -30,8 +39,7 @@ from app.services.upload_security import (
     sniff_content_kind,
 )
 from app.rate_limit import check_rate_limited
-
-load_dotenv()
+from app.metrics import render_metrics_payload
 
 
 @asynccontextmanager
@@ -62,6 +70,7 @@ app.add_middleware(
 )
 if settings.SECURITY_HEADERS_ENABLED:
     app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(ObservabilityMiddleware)
 
 LOGIN_RATE_LIMIT_MAX_REQUESTS = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60
@@ -110,11 +119,35 @@ def require_auth(request: Request) -> bool:
 
 
 @app.get("/health")
-async def health():
-    return {
+async def health(request: Request):
+    payload: dict = {
         "status": "ok",
         "rate_limit_backend": "redis" if settings.REDIS_URL else "memory",
     }
+    if settings.REDIS_URL:
+        redis_client = getattr(request.app.state, "redis", None)
+        if redis_client is None:
+            payload["redis"] = "unavailable"
+            payload["status"] = "degraded"
+        else:
+            try:
+                await redis_client.ping()
+                payload["redis"] = "ok"
+            except Exception:
+                payload["redis"] = "error"
+                payload["status"] = "degraded"
+    cid = getattr(request.state, "correlation_id", None)
+    if cid:
+        payload["correlation_id"] = cid
+    return payload
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    if not settings.OBSERVABILITY_METRICS_ENABLED:
+        raise HTTPException(status_code=404, detail="Not found")
+    body, media_type = render_metrics_payload()
+    return Response(content=body, media_type=media_type)
 
 
 @app.post("/process-mock-email")

@@ -1,9 +1,11 @@
+import logging
 from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 WebAuthProvider = Literal["legacy", "supabase"]
+LogFormat = Literal["text", "json"]
 
 class Settings(BaseSettings):
     """
@@ -133,6 +135,33 @@ class Settings(BaseSettings):
         if value == "":
             return None
         return value
+
+    LOG_LEVEL: str = Field(
+        default="INFO",
+        description="Python log level (DEBUG, INFO, WARNING, ERROR).",
+    )
+    LOG_FORMAT: LogFormat = Field(
+        default="text",
+        description="text = human-readable console; json = one JSON object per line (log aggregators).",
+    )
+    OBSERVABILITY_METRICS_ENABLED: bool = Field(
+        default=False,
+        description="Expose Prometheus metrics at GET /metrics (enable in private networks or behind auth).",
+    )
+    OBSERVABILITY_ACCESS_LOG: bool = Field(
+        default=True,
+        description="Emit one structured log line per HTTP request (method, path, status, duration_ms, correlation_id).",
+    )
+
+    @field_validator("LOG_LEVEL", mode="before")
+    @classmethod
+    def normalize_log_level(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return "INFO"
+        upper = value.upper()
+        if hasattr(logging, upper) and isinstance(getattr(logging, upper), int):
+            return upper
+        return "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env",

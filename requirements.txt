@@ -13,3 +13,5 @@ extract-msg
 openai
 pypdf
 redis>=5.0
+structlog>=24.0
+prometheus-client>=0.20
