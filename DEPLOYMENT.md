@@ -67,8 +67,8 @@ Never set `APP_DEBUG=true` in production (it exposes validation details in 422 r
 | Session | `SESSION_MAX_AGE_SECONDS` (8h), `SESSION_COOKIE_SAMESITE` (`lax` / `strict` / `none`) |
 | Uploads | `MAX_UPLOAD_FILE_BYTES` (10 MiB), `UPLOAD_AV_SCAN_*` (optional AV CLI on PDF by default) |
 | Rate limit / Redis | `RATE_LIMIT_REDIS_KEY_PREFIX`, `RATE_LIMIT_TRUST_X_FORWARDED_FOR` (only behind a **trusted** proxy) |
-| Security headers | `SECURITY_HEADERS_ENABLED`, `SECURITY_CSP`, HSTS-related keys, `SECURITY_CROSS_ORIGIN_OPENER_POLICY` (empty to omit COOP) |
-| Observability | `LOG_LEVEL`, `OBSERVABILITY_METRICS_ENABLED`, `OBSERVABILITY_ACCESS_LOG` |
+| Security headers | `SECURITY_HEADERS_ENABLED`, `SECURITY_CSP`, `SECURITY_CSP_USE_NONCES` (no `unsafe-inline` on scripts when set and `SECURITY_CSP` unset), HSTS-related keys, `SECURITY_CROSS_ORIGIN_OPENER_POLICY` (empty to omit COOP) |
+| Observability | `LOG_LEVEL`, `OBSERVABILITY_METRICS_ENABLED`, `METRICS_BEARER_TOKEN` (Bearer auth for `/metrics` when set), `OBSERVABILITY_ACCESS_LOG` |
 | Debug | `APP_DEBUG` (default `false`) |
 
 ---
@@ -108,7 +108,7 @@ Use a **CDN or WAF** (Cloudflare, API Gateway) for DDoS and coarse rate limits i
 ### Metrics & health
 
 - **`GET /health`**: synthetic checks; expect **`status: degraded`** if Redis is configured but **`redis`** is not `ok`.
-- **`GET /metrics`**: Prometheus scrape when **`OBSERVABILITY_METRICS_ENABLED=true`**; do not expose publicly without protection.
+- **`GET /metrics`**: Prometheus scrape when **`OBSERVABILITY_METRICS_ENABLED=true`**. Set **`METRICS_BEARER_TOKEN`** so the app requires `Authorization: Bearer <token>` (constant-time check). Still prefer private network, IP allowlist, or mTLS at the edge; do not expose metrics on the public internet without layered controls.
 
 ---
 

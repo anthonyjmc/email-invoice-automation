@@ -10,12 +10,14 @@ from app.logging_config import configure_logging
 
 configure_logging()
 
-from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException, Query
+import secrets
+
+from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException, Query, Header
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.responses import Response
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from app.security_headers import SecurityHeadersMiddleware
+from app.security_headers import CspNonceMiddleware, SecurityHeadersMiddleware
 from app.observability import ObservabilityMiddleware
 from pathlib import Path
 from app.csrf import get_or_create_csrf_token, verify_csrf_token
@@ -72,6 +74,8 @@ app.add_middleware(
 if settings.SECURITY_HEADERS_ENABLED:
     app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(ObservabilityMiddleware)
+if settings.SECURITY_HEADERS_ENABLED:
+    app.add_middleware(CspNonceMiddleware)
 register_exception_handlers(app)
 
 LOGIN_RATE_LIMIT_MAX_REQUESTS = 5
@@ -147,9 +151,18 @@ async def health(request: Request):
 
 
 @app.get("/metrics")
-async def prometheus_metrics():
+async def prometheus_metrics(
+    authorization: str | None = Header(None, alias="Authorization"),
+):
     if not settings.OBSERVABILITY_METRICS_ENABLED:
         raise HTTPException(status_code=404, detail="Not found")
+    expected = settings.METRICS_BEARER_TOKEN
+    if expected:
+        if not authorization or not authorization.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        got = authorization[7:].strip()
+        if len(got) != len(expected) or not secrets.compare_digest(got, expected):
+            raise HTTPException(status_code=401, detail="Unauthorized")
     body, media_type = render_metrics_payload()
     return Response(content=body, media_type=media_type)
 
@@ -228,6 +241,7 @@ async def login_page(request: Request):
             "error_message": error_message,
             "csrf_token": csrf_token,
             "web_auth_provider": settings.WEB_AUTH_PROVIDER,
+            "csp_nonce": getattr(request.state, "csp_nonce", None),
         },
     )
 
@@ -334,6 +348,7 @@ async def dashboard_page(request: Request):
             "success_message": success_message,
             "csrf_token": csrf_token,
             "web_auth_provider": settings.WEB_AUTH_PROVIDER,
+            "csp_nonce": getattr(request.state, "csp_nonce", None),
         },
     )
 

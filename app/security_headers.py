@@ -5,7 +5,10 @@ TLS termination remains at the reverse proxy; HSTS is only sent when explicitly 
 
 from __future__ import annotations
 
+import secrets
+
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.config import settings
 
@@ -23,6 +26,37 @@ DEFAULT_CSP = (
 )
 
 
+def build_csp_with_script_nonce(nonce: str) -> str:
+    """
+    Tighten script-src with a per-request nonce; keep style-src relaxed for large inline CSS in Jinja.
+    Inline <script> in templates must include the same nonce attribute.
+    """
+    return (
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        f"script-src 'self' 'nonce-{nonce}'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https: blob:; "
+        "font-src 'self' data:; "
+        "connect-src 'self'; "
+        "object-src 'none'"
+    )
+
+
+class CspNonceMiddleware(BaseHTTPMiddleware):
+    """
+    Outermost middleware: set request.state.csp_nonce before HTML routes render.
+    Ignored when SECURITY_CSP override is set (operator owns the full policy).
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        if settings.SECURITY_CSP_USE_NONCES and not settings.SECURITY_CSP:
+            request.state.csp_nonce = secrets.token_urlsafe(16)
+        return await call_next(request)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -34,7 +68,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = settings.SECURITY_REFERRER_POLICY
         response.headers["Permissions-Policy"] = settings.SECURITY_PERMISSIONS_POLICY
 
-        csp = settings.SECURITY_CSP or DEFAULT_CSP
+        if settings.SECURITY_CSP:
+            csp = settings.SECURITY_CSP
+        elif settings.SECURITY_CSP_USE_NONCES:
+            nonce = getattr(request.state, "csp_nonce", None)
+            csp = build_csp_with_script_nonce(nonce) if nonce else DEFAULT_CSP
+        else:
+            csp = DEFAULT_CSP
         if settings.SECURITY_CSP_UPGRADE_INSECURE and "upgrade-insecure-requests" not in csp:
             csp = f"{csp}; upgrade-insecure-requests"
         response.headers["Content-Security-Policy"] = csp

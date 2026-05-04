@@ -653,6 +653,15 @@
             font-size: 12px;
         }
 
+        .pagination-bar {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .pagination-page-num {
+            margin: 0 6px;
+        }
+
         @media (max-width: 980px) {
             .app-shell {
                 grid-template-columns: minmax(0, 1fr);
@@ -717,11 +726,11 @@
                 <div><strong>AI Extraction</strong> enabled</div>
                 <div><strong>Rate Limit</strong> enabled</div>
                 {% if list_has_prev or list_has_next %}
-                <div class="pagination-bar" style="margin-top:10px;font-size:0.85rem;">
+                <div class="pagination-bar">
                     {% if list_has_prev %}
                     <a href="/dashboard?page={{ list_page - 1 }}&page_size={{ list_page_size }}">← Prev</a>
                     {% endif %}
-                    <span style="margin:0 6px;">Page {{ list_page }}</span>
+                    <span class="pagination-page-num">Page {{ list_page }}</span>
                     {% if list_has_next %}
                     <a href="/dashboard?page={{ list_page + 1 }}&page_size={{ list_page_size }}">Next →</a>
                     {% endif %}
@@ -919,7 +928,7 @@
     </main>
 </div>
 
-<script>
+<script{% if csp_nonce %} nonce="{{ csp_nonce }}"{% endif %}>
     const rawInvoices = {{ invoices|tojson }};
     const invoiceGrandTotal = {{ invoice_total|default(0) }};
 
@@ -1021,12 +1030,16 @@
                 return `
                     <div class="chart-row">
                         <div>${company}</div>
-                        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+                        <div class="bar-track"><div class="bar-fill" data-pct="${width}"></div></div>
                         <div>${formatAmount(amount)}</div>
                     </div>
                 `
             })
             .join("")
+        companyChart.querySelectorAll(".bar-fill[data-pct]").forEach((el) => {
+            const pct = el.getAttribute("data-pct")
+            if (pct) el.style.width = `${pct}%`
+        })
     }
 
     function renderTable(invoices) {

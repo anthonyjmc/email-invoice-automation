@@ -118,6 +118,13 @@ class Settings(BaseSettings):
         default=False,
         description="Append upgrade-insecure-requests to CSP (useful behind TLS proxies).",
     )
+    SECURITY_CSP_USE_NONCES: bool = Field(
+        default=False,
+        description=(
+            "When true and SECURITY_CSP is unset: use a per-request nonce for script-src (no unsafe-inline on scripts); "
+            "templates receive csp_nonce. style-src stays 'unsafe-inline' for inline CSS. Incompatible with SECURITY_CSP override."
+        ),
+    )
     SECURITY_X_FRAME_OPTIONS: str = Field(default="DENY", description="X-Frame-Options value (DENY, SAMEORIGIN, etc.).")
     SECURITY_REFERRER_POLICY: str = Field(default="strict-origin-when-cross-origin")
     SECURITY_PERMISSIONS_POLICY: str = Field(
@@ -136,6 +143,13 @@ class Settings(BaseSettings):
             return None
         return value
 
+    @field_validator("METRICS_BEARER_TOKEN", mode="before")
+    @classmethod
+    def empty_metrics_bearer_to_none(cls, value: object) -> object:
+        if value == "":
+            return None
+        return value
+
     LOG_LEVEL: str = Field(
         default="INFO",
         description="Python log level (DEBUG, INFO, WARNING, ERROR).",
@@ -147,6 +161,13 @@ class Settings(BaseSettings):
     OBSERVABILITY_METRICS_ENABLED: bool = Field(
         default=False,
         description="Expose Prometheus metrics at GET /metrics (enable in private networks or behind auth).",
+    )
+    METRICS_BEARER_TOKEN: str | None = Field(
+        default=None,
+        description=(
+            "When set and metrics are enabled, GET /metrics requires Authorization: Bearer <token>. "
+            "Prefer also network isolation (private scrape, IP allowlist, mTLS at proxy)."
+        ),
     )
     OBSERVABILITY_ACCESS_LOG: bool = Field(
         default=True,
