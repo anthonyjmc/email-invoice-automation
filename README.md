@@ -9,6 +9,17 @@ Built with FastAPI + Supabase + Python + Azure.
 
 ---
 
+## Tests and CI
+
+- **Install dev tools:** `pip install -r requirements.txt -r requirements-dev.txt`
+- **Lint:** `ruff check app tests` (rules in `pyproject.toml`: `E`, `F`; `E402` ignored in `app/main.py` for intentional import order after `load_dotenv` / logging setup).
+- **Tests:** `pytest` — minimal integration coverage: `/health`, `/metrics` disabled, legacy **login** (success + wrong password), **upload** (happy path `.txt`, bad CSRF, unsupported extension), **`POST /process-mock-email`** with `X-App-Password`, and **parser** on `examples/sample_invoice_email.txt` with Azure skipped (regex fallback). Supabase and Azure are **mocked**; no real keys or network required.
+- **CI:** GitHub Actions workflow **[`.github/workflows/ci.yml`](.github/workflows/ci.yml)** runs on `push`/`pull_request` to `main` or `master`: install pinned deps, `ruff`, `pytest`.
+
+Runtime dependencies are **version-pinned** in [`requirements.txt`](requirements.txt); [`requirements-dev.txt`](requirements-dev.txt) pins `pytest` and `ruff`.
+
+---
+
 ## 🚀 Features
 
 ✔ Process invoices from:

@@ -21,6 +21,8 @@ The app fails at startup if any of these are missing or invalid (Pydantic `Setti
 
 Copy from [`.env.example`](.env.example) and fill real values. **`render.yaml`** lists only a subset of keys; add the rest in the host’s environment UI (Render **Environment**, Azure **Configuration**, etc.).
 
+**Reproducible installs:** use pinned [`requirements.txt`](requirements.txt). For local tests and lint: `pip install -r requirements.txt -r requirements-dev.txt` (see README **Tests and CI**).
+
 ---
 
 ## Strongly recommended for production

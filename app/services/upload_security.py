@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 from pathlib import PurePath
 
+from fastapi import UploadFile
+
 OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 ALLOWED_EXTENSIONS = frozenset({"txt", "eml", "msg", "pdf"})
 
