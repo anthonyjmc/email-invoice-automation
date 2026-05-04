@@ -82,7 +82,7 @@ pip install -r requirements.txt
 Create env file:
 cp .env.example .env  # Windows PowerShell: Copy-Item .env.example .env
 
-Update `.env` with your real Supabase and Azure OpenAI credentials before starting the server.
+Update `.env` with your real Supabase and Azure OpenAI credentials before starting the server. Set `SESSION_SECRET` to a long random string (at least 32 characters), unique per environment—for example `openssl rand -hex 32`.
 
 Run Locally:
 uvicorn app.main:app --reload

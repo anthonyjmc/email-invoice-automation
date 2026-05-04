@@ -372,6 +372,140 @@
             box-shadow: -3px -3px 7px #ffffff, 3px 3px 7px #cfd8e6;
         }
 
+        .extracted-panel {
+            margin-top: 18px;
+            border-radius: 18px;
+            padding: 14px;
+            background: var(--surface-soft);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .extracted-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .extracted-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1d7a43;
+            background: #e5f6ec;
+            padding: 5px 9px;
+            border-radius: 999px;
+            box-shadow: inset -2px -2px 5px #f4fff8, inset 2px 2px 5px #c9e8d5;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .meta-card {
+            border-radius: 12px;
+            background: var(--surface);
+            box-shadow: -2px -2px 6px #ffffff, 2px 2px 6px #ced8e7;
+            padding: 9px 10px;
+        }
+
+        .meta-label {
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .meta-value {
+            margin-top: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .items-table {
+            margin-top: 12px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #d9e1ef;
+            background: var(--surface);
+            box-shadow: var(--shadow-inset);
+        }
+
+        .items-table table {
+            font-size: 12px;
+        }
+
+        .items-table th:last-child,
+        .items-table td:last-child {
+            text-align: right;
+        }
+
+        .totals-grid {
+            margin-top: 12px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .total-card {
+            border-radius: 12px;
+            background: var(--surface);
+            box-shadow: -2px -2px 6px #ffffff, 2px 2px 6px #ced8e7;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .total-label {
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .total-value {
+            margin-top: 4px;
+            font-size: 30px;
+            font-weight: 700;
+            color: #3d67b9;
+            letter-spacing: -0.03em;
+        }
+
+        .extract-actions {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .extract-action-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 9px 10px;
+            background: var(--surface);
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: -2px -2px 6px #ffffff, 2px 2px 6px #ced8e7;
+            cursor: pointer;
+        }
+
+        .extract-action-btn.primary {
+            color: #f8fbff;
+            background: linear-gradient(135deg, #6f99f2, #4b7ad4);
+        }
+
         .invoice-kpis {
             margin-top: 14px;
             display: grid;
@@ -536,6 +670,12 @@
                 grid-template-columns: minmax(0, 1fr);
                 gap: 4px;
             }
+
+            .meta-grid,
+            .totals-grid,
+            .extract-actions {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
     </style>
 </head>
@@ -637,6 +777,84 @@
                     <a href="/process-ui" class="quick-action-link">Process sample invoice</a>
                     <a href="/invoices" class="quick-action-link">Open invoices JSON API</a>
                 </div>
+
+                {% set latest_invoice = invoices[0] if invoices and invoices|length > 0 else none %}
+                {% set latest_total = latest_invoice.total if latest_invoice and latest_invoice.total is not none else 0 %}
+                {% set latest_tax = latest_total * 0.1 %}
+                {% set latest_subtotal = latest_total - latest_tax %}
+                <div class="extracted-panel">
+                    <div class="extracted-header">
+                        <div class="extracted-title">Extracted Data</div>
+                        <div class="status-badge">Extraction complete</div>
+                    </div>
+
+                    <div class="meta-grid">
+                        <div class="meta-card">
+                            <div class="meta-label">Vendor Name</div>
+                            <div class="meta-value">{{ latest_invoice.vendor if latest_invoice else "No data yet" }}</div>
+                        </div>
+                        <div class="meta-card">
+                            <div class="meta-label">Invoice #</div>
+                            <div class="meta-value">{{ latest_invoice.id if latest_invoice and latest_invoice.id is not none else "INV-000000" }}</div>
+                        </div>
+                        <div class="meta-card">
+                            <div class="meta-label">Date</div>
+                            <div class="meta-value">{{ latest_invoice.invoice_date if latest_invoice else "N/A" }}</div>
+                        </div>
+                        <div class="meta-card">
+                            <div class="meta-label">Due Date</div>
+                            <div class="meta-value">{{ latest_invoice.invoice_date if latest_invoice else "N/A" }}</div>
+                        </div>
+                        <div class="meta-card">
+                            <div class="meta-label">Sender</div>
+                            <div class="meta-value">{{ latest_invoice.sender_email if latest_invoice else "unknown@email.com" }}</div>
+                        </div>
+                        <div class="meta-card">
+                            <div class="meta-label">Currency</div>
+                            <div class="meta-value">{{ latest_invoice.currency if latest_invoice else "USD" }}</div>
+                        </div>
+                    </div>
+
+                    <div class="items-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Qty</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Extracted invoice amount</td>
+                                    <td>1</td>
+                                    <td class="amount">{{ "$%.2f"|format(latest_total) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="totals-grid">
+                        <div class="total-card">
+                            <div class="total-label">Subtotal</div>
+                            <div class="total-value">{{ "$%.2f"|format(latest_subtotal) }}</div>
+                        </div>
+                        <div class="total-card">
+                            <div class="total-label">Tax (10%)</div>
+                            <div class="total-value">{{ "$%.2f"|format(latest_tax) }}</div>
+                        </div>
+                        <div class="total-card">
+                            <div class="total-label">Total</div>
+                            <div class="total-value">{{ "$%.2f"|format(latest_total) }}</div>
+                        </div>
+                    </div>
+
+                    <div class="extract-actions">
+                        <button type="button" class="extract-action-btn" id="copy-json-btn">Copy JSON</button>
+                        <button type="button" class="extract-action-btn" id="download-csv-btn">Download CSV</button>
+                        <button type="button" class="extract-action-btn primary">Export to Supabase</button>
+                    </div>
+                </div>
             </section>
 
             <section id="invoices-tab" class="tab-content">
@@ -713,6 +931,8 @@
     const kpiTotalAmount = document.getElementById("kpi-total-amount")
     const kpiTopCompany = document.getElementById("kpi-top-company")
     const sideCount = document.getElementById("side-count")
+    const copyJsonButton = document.getElementById("copy-json-btn")
+    const downloadCsvButton = document.getElementById("download-csv-btn")
 
     function formatAmount(value) {
         const numericValue = Number(value)
@@ -875,6 +1095,31 @@
         fileInput.files = event.dataTransfer.files
         updateSelectedFile()
     })
+
+    if (copyJsonButton) {
+        copyJsonButton.addEventListener("click", async () => {
+            const latestInvoice = state.invoices[0] || {}
+            await navigator.clipboard.writeText(JSON.stringify(latestInvoice, null, 2))
+        })
+    }
+
+    if (downloadCsvButton) {
+        downloadCsvButton.addEventListener("click", () => {
+            const latestInvoice = state.invoices[0] || {}
+            const headers = ["vendor", "total", "currency", "invoice_date", "sender_email"]
+            const row = headers.map((header) => `"${String(latestInvoice[header] ?? "")}"`).join(",")
+            const csv = `${headers.join(",")}\n${row}\n`
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.setAttribute("download", "extracted-invoice.csv")
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        })
+    }
 
     renderTabs()
     renderCompanyFilter()

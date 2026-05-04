@@ -24,8 +24,7 @@ load_dotenv()
 templates = Jinja2Templates(directory="app/templates")
 app = FastAPI(title="Email Invoice Automation Demo")
 
-# NOTE: you should change this secret key in production
-app.add_middleware(SessionMiddleware, secret_key="SUPER_SECRET_KEY_CHANGE_THIS")
+app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET)
 
 RATE_LIMIT_STATE: dict[str, deque[float]] = {}
 RATE_LIMIT_LOCK = Lock()

@@ -1,10 +1,15 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables or .env file.
     """
-    
+
+    SESSION_SECRET: str = Field(
+        min_length=32,
+        description="Secret for signing session cookies. Use a long random value per environment.",
+    )
     APP_PASSWORD: str
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
