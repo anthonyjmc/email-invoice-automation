@@ -16,7 +16,7 @@ Built with FastAPI + Supabase + Python + Azure.
 - **Install dev tools:** `pip install -r requirements.txt -r requirements-dev.txt`
 - **Lint:** `ruff check app tests` (rules in `pyproject.toml`: `E`, `F`; `E402` ignored in `app/main.py` for intentional import order after `load_dotenv` / logging setup).
 - **Tests:** `pytest` — minimal integration coverage: `/health`, `/metrics` disabled, legacy **login** (success + wrong password), **upload** (happy path `.txt`, bad CSRF, unsupported extension), **`POST /process-mock-email`** with `X-App-Password`, and **parser** on `examples/sample_invoice_email.txt` with Azure skipped (regex fallback). Supabase and Azure are **mocked**; no real keys or network required.
-- **CI:** GitHub Actions workflow **[`.github/workflows/ci.yml`](.github/workflows/ci.yml)** runs on `push` and `pull_request`: install pinned deps, `ruff`, `pytest`. (Rate limits are disabled in tests so login-heavy suites stay stable.)
+- **CI:** GitHub Actions workflow **[`.github/workflows/ci.yml`](.github/workflows/ci.yml)** runs on every **`push`** and on **`pull_request`** (any branch; there is no `main`/`master`-only filter in `on:`). Steps: install pinned deps, `ruff`, `pytest`. (Rate limits are disabled in tests so login-heavy suites stay stable.)
 
 Runtime dependencies are **version-pinned** in [`requirements.txt`](requirements.txt); [`requirements-dev.txt`](requirements-dev.txt) pins `pytest` and `ruff`.
 
