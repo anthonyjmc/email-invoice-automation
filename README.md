@@ -5,6 +5,8 @@ Upload emails or invoice text — the system extracts key fields and stores them
 
 Built with FastAPI + Supabase + Python + Azure.
 
+**Deployment & operations:** required env vars, limits, scaling, and incident runbook → **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ---
 
 ## 🚀 Features
