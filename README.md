@@ -7,6 +7,8 @@ Built with FastAPI + Supabase + Python + Azure.
 
 **Deployment & operations:** required env vars, limits, scaling, and incident runbook → **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
+**Machine API (`GET /invoices`, `POST /process-mock-email`):** use **`Authorization: Bearer …`** or **`X-API-Key`** with secrets stored in **`machine_api_keys`** (SHA-256 hash only; scopes `invoices:read` / `invoices:write` / `invoices:admin`). Legacy **`X-App-Password`** matching **`APP_PASSWORD`** remains if **`API_LEGACY_HEADER_AUTH_ENABLED=true`**. Apply migration **`20260430140000_invoice_idempotency_machine_api_keys.sql`**. **`GET /invoices`** supports **`page`** and **`limit`** (capped by **`INVOICE_LIST_MAX_LIMIT`**). Saves are **idempotent** by **`source_content_hash`** (upload body), **`invoice_ref`** (vendor + invoice # + date), or **`Idempotency-Key`** header on machine POST.
+
 ---
 
 ## Tests and CI
@@ -14,7 +16,7 @@ Built with FastAPI + Supabase + Python + Azure.
 - **Install dev tools:** `pip install -r requirements.txt -r requirements-dev.txt`
 - **Lint:** `ruff check app tests` (rules in `pyproject.toml`: `E`, `F`; `E402` ignored in `app/main.py` for intentional import order after `load_dotenv` / logging setup).
 - **Tests:** `pytest` — minimal integration coverage: `/health`, `/metrics` disabled, legacy **login** (success + wrong password), **upload** (happy path `.txt`, bad CSRF, unsupported extension), **`POST /process-mock-email`** with `X-App-Password`, and **parser** on `examples/sample_invoice_email.txt` with Azure skipped (regex fallback). Supabase and Azure are **mocked**; no real keys or network required.
-- **CI:** GitHub Actions workflow **[`.github/workflows/ci.yml`](.github/workflows/ci.yml)** runs on `push`/`pull_request` to `main` or `master`: install pinned deps, `ruff`, `pytest`.
+- **CI:** GitHub Actions workflow **[`.github/workflows/ci.yml`](.github/workflows/ci.yml)** runs on `push` and `pull_request`: install pinned deps, `ruff`, `pytest`. (Rate limits are disabled in tests so login-heavy suites stay stable.)
 
 Runtime dependencies are **version-pinned** in [`requirements.txt`](requirements.txt); [`requirements-dev.txt`](requirements-dev.txt) pins `pytest` and `ruff`.
 

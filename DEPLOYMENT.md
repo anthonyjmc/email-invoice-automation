@@ -11,7 +11,7 @@ The app fails at startup if any of these are missing or invalid (Pydantic `Setti
 | Variable | Notes |
 |----------|--------|
 | `SESSION_SECRET` | At least **32** characters. Unique per environment. Example: `openssl rand -hex 32`. |
-| `APP_PASSWORD` | Used by **`verify_password`** on machine routes (`GET /invoices`, `POST /process-mock-email`) via header `X-App-Password`. |
+| `APP_PASSWORD` | Legacy machine auth: **`X-App-Password`** or **`Authorization: Bearer`** with this value when **`API_LEGACY_HEADER_AUTH_ENABLED=true`**. Prefer **`machine_api_keys`** + Bearer / **`X-API-Key`** (see README / migration `20260430140000`). |
 | `SUPABASE_URL` | Project URL, e.g. `https://<ref>.supabase.co`. |
 | `SUPABASE_ANON_KEY` | Supabase anon (publishable) key; server uses it with RLS-aware clients where applicable. |
 | `AUTH_PASSWORD` | **Legacy** login shared password when `WEB_AUTH_PROVIDER=legacy`. Still required at startup even if you use Supabase Auth (set a strong unused value if only Supabase is used, or align with your policy). |
@@ -22,6 +22,26 @@ The app fails at startup if any of these are missing or invalid (Pydantic `Setti
 Copy from [`.env.example`](.env.example) and fill real values. **`render.yaml`** lists only a subset of keys; add the rest in the host’s environment UI (Render **Environment**, Azure **Configuration**, etc.).
 
 **Reproducible installs:** use pinned [`requirements.txt`](requirements.txt). For local tests and lint: `pip install -r requirements.txt -r requirements-dev.txt` (see README **Tests and CI**).
+
+### Machine API keys, idempotency, pagination
+
+1. Apply migration [`supabase/migrations/20260430140000_invoice_idempotency_machine_api_keys.sql`](supabase/migrations/20260430140000_invoice_idempotency_machine_api_keys.sql) (adds `invoice_number`, `source_content_hash`, `invoice_ref`, `idempotency_key` on `invoices`, plus `machine_api_keys` and `machine_api_audit`). **`SUPABASE_SERVICE_ROLE_KEY`** is required on the server to read keys and write audit rows.
+2. **Create a key** (example; generate a random secret once, store only the hash):
+
+```bash
+python -c "import hashlib, secrets; s=secrets.token_urlsafe(32); print('SECRET (store in vault):', s); print('key_hash for SQL:', hashlib.sha256(s.encode()).hexdigest())"
+```
+
+Then insert with the Supabase SQL editor (service role / SQL):
+
+```sql
+insert into public.machine_api_keys (name, key_hash, scopes)
+values ('integration-n8n', '<paste key_hash>', array['invoices:read','invoices:write']::text[]);
+```
+
+3. **Call APIs:** `Authorization: Bearer <SECRET>` or `X-API-Key: <SECRET>`. Optional legacy: `X-App-Password: <APP_PASSWORD>` if `API_LEGACY_HEADER_AUTH_ENABLED` is true.
+4. **Pagination:** `GET /invoices?page=1&limit=50` returns `invoices`, `total`, `page`, `limit`, `offset`. Dashboard uses `page` / `page_size` query params.
+5. **Idempotency:** re-uploading the same bytes sets the same `source_content_hash` and returns **`status: duplicate`** on machine POST; UI redirects with `success=deduped`. Optional `Idempotency-Key` / `X-Idempotency-Key` on `POST /process-mock-email` for cross-run dedupe when `user_id` is null.
 
 ---
 

@@ -156,6 +156,27 @@ class Settings(BaseSettings):
         default=False,
         description="If true, 422 validation responses include field-level errors (local dev only). Never enable in production.",
     )
+    API_LEGACY_HEADER_AUTH_ENABLED: bool = Field(
+        default=True,
+        description="Allow machine routes to authenticate with X-App-Password matching APP_PASSWORD (legacy). Prefer API keys.",
+    )
+    API_KEY_CACHE_SECONDS: int = Field(
+        default=30,
+        ge=0,
+        description="TTL for caching machine_api_keys rows from Supabase (service role). Set 0 to reload every request.",
+    )
+    INVOICE_LIST_DEFAULT_LIMIT: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Default page size for dashboard and GET /invoices.",
+    )
+    INVOICE_LIST_MAX_LIMIT: int = Field(
+        default=200,
+        ge=1,
+        le=500,
+        description="Maximum allowed limit query param for GET /invoices and dashboard page_size.",
+    )
 
     @field_validator("LOG_LEVEL", mode="before")
     @classmethod

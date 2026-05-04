@@ -84,6 +84,38 @@ def test_upload_invalid_csrf_redirects(client: TestClient) -> None:
     assert "csrf_invalid" in (up.headers.get("location") or "")
 
 
+def test_upload_same_file_twice_second_is_deduped(client: TestClient) -> None:
+    r = client.get("/")
+    token = _csrf_token(r.text)
+    client.post(
+        "/login",
+        data={"csrf_token": token, "password": "test-login-password"},
+        follow_redirects=True,
+    )
+    dash = client.get("/dashboard")
+    upload_csrf = _csrf_token(dash.text)
+    sample_path = Path(__file__).resolve().parents[1] / "examples" / "sample_invoice_email.txt"
+    raw = sample_path.read_bytes()
+    up1 = client.post(
+        "/upload-invoice",
+        data={"csrf_token": upload_csrf},
+        files={"file": ("invoice.txt", raw, "text/plain")},
+        follow_redirects=False,
+    )
+    assert up1.status_code == 302
+    assert "success=uploaded" in (up1.headers.get("location") or "")
+    dash2 = client.get("/dashboard")
+    upload_csrf2 = _csrf_token(dash2.text)
+    up2 = client.post(
+        "/upload-invoice",
+        data={"csrf_token": upload_csrf2},
+        files={"file": ("invoice.txt", raw, "text/plain")},
+        follow_redirects=False,
+    )
+    assert up2.status_code == 302
+    assert "success=deduped" in (up2.headers.get("location") or "")
+
+
 def test_upload_unsupported_extension_redirects(client: TestClient) -> None:
     r = client.get("/")
     token = _csrf_token(r.text)

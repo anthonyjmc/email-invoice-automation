@@ -713,9 +713,20 @@
                 </button>
             </div>
             <div class="side-stats">
-                <div><strong id="side-count">{{ invoices|length }}</strong> invoices registered</div>
+                <div><strong id="side-count">{{ invoice_total|default(0) }}</strong> invoices registered</div>
                 <div><strong>AI Extraction</strong> enabled</div>
                 <div><strong>Rate Limit</strong> enabled</div>
+                {% if list_has_prev or list_has_next %}
+                <div class="pagination-bar" style="margin-top:10px;font-size:0.85rem;">
+                    {% if list_has_prev %}
+                    <a href="/dashboard?page={{ list_page - 1 }}&page_size={{ list_page_size }}">← Prev</a>
+                    {% endif %}
+                    <span style="margin:0 6px;">Page {{ list_page }}</span>
+                    {% if list_has_next %}
+                    <a href="/dashboard?page={{ list_page + 1 }}&page_size={{ list_page_size }}">Next →</a>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </aside>
@@ -910,6 +921,7 @@
 
 <script>
     const rawInvoices = {{ invoices|tojson }};
+    const invoiceGrandTotal = {{ invoice_total|default(0) }};
 
     const state = {
         activeTab: "upload-tab",
@@ -972,7 +984,6 @@
     }
 
     function renderKpis(invoices) {
-        const totalCount = invoices.length
         const totalAmount = invoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0)
         const grouped = {}
         invoices.forEach((invoice) => {
@@ -981,10 +992,10 @@
         })
         const topCompany = Object.entries(grouped).sort((a, b) => b[1] - a[1])[0]?.[0] || "-"
 
-        kpiTotalCount.textContent = String(totalCount)
+        kpiTotalCount.textContent = String(Number.isFinite(invoiceGrandTotal) ? invoiceGrandTotal : invoices.length)
         kpiTotalAmount.textContent = formatAmount(totalAmount)
         kpiTopCompany.textContent = topCompany
-        sideCount.textContent = String(state.invoices.length)
+        sideCount.textContent = String(Number.isFinite(invoiceGrandTotal) ? invoiceGrandTotal : state.invoices.length)
     }
 
     function renderChart(invoices) {

@@ -25,6 +25,7 @@ class InvoiceInfo(BaseModel):
     currency: Optional[str]
     invoice_date: Optional[str]   # Ideally YYYY-MM-DD
     sender_email: Optional[str]
+    invoice_number: Optional[str] = None
 
 
 def extract_invoice_from_email(email_text: str) -> dict:
@@ -43,7 +44,8 @@ def extract_invoice_from_email(email_text: str) -> dict:
                     "You MUST return only the fields defined in the schema: "
                     "vendor (supplier name), total (numeric amount), currency (e.g. 'USD'), "
                     "invoice_date (invoice date in YYYY-MM-DD if possible), "
-                    "sender_email (email address of the sender if available). "
+                    "sender_email (email address of the sender if available), "
+                    "invoice_number (invoice or reference number if visible). "
                     "If a value is missing or not clear, set it to null."
                 ),
             },

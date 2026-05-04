@@ -10,7 +10,7 @@ from app.logging_config import configure_logging
 
 configure_logging()
 
-from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException
+from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.responses import Response
 from fastapi.templating import Jinja2Templates
@@ -19,7 +19,7 @@ from app.security_headers import SecurityHeadersMiddleware
 from app.observability import ObservabilityMiddleware
 from pathlib import Path
 from app.csrf import get_or_create_csrf_token, verify_csrf_token
-from app.security import verify_password
+from app.services.api_key_auth import require_machine_scopes
 from app.config import settings
 from app.db import get_supabase_for_api, get_supabase_for_request
 from app.services.supabase_web_auth import sign_in_with_email_password, sign_out_with_access_token
@@ -29,7 +29,7 @@ from app.services.email_parser import (
     parse_msg_invoice,
     parse_pdf_invoice,
 )
-from app.services.invoice_service import save_invoice, list_invoices
+from app.services.invoice_service import hash_bytes, save_invoice, list_invoices
 from app.services.upload_security import (
     build_safe_temp_path,
     extension_from_upload_filename,
@@ -155,13 +155,17 @@ async def prometheus_metrics():
 
 
 @app.post("/process-mock-email")
-async def process_mock_email(_: None = Depends(verify_password)):
+async def process_mock_email(
+    request: Request,
+    _: None = Depends(require_machine_scopes("invoices:write")),
+):
     """
     Process a local mock email file (examples/sample_invoice_email.txt),
     extract invoice fields, and save them to the database.
-    This endpoint is protected by basic password verification.
+    Machine auth: Bearer / X-API-Key (DB keys) or legacy X-App-Password when enabled.
     """
     path = Path("examples/sample_invoice_email.txt")
+    raw = path.read_bytes()
     data = parse_mock_email(str(path))
 
     # At this point, parse_mock_email already returns "invoice_date" as an ISO string
@@ -172,18 +176,40 @@ async def process_mock_email(_: None = Depends(verify_password)):
     #       data["invoice_date"] = data["invoice_date"].isoformat()
 
     db = get_supabase_for_api()
-    save_invoice(data, client=db, user_id=None)
-    return {"status": "saved", "invoice": data}
+    raw_idem = request.headers.get("Idempotency-Key") or request.headers.get("X-Idempotency-Key")
+    idem = raw_idem.strip() if isinstance(raw_idem, str) and raw_idem.strip() else None
+    result = save_invoice(
+        data,
+        client=db,
+        user_id=None,
+        source_content_hash=hash_bytes(raw),
+        idempotency_key=idem,
+    )
+    return {"status": result["status"], "id": result["id"], "invoice": result["invoice"]}
 
 
 @app.get("/invoices")
-async def get_invoices(_: None = Depends(verify_password)):
+async def get_invoices(
+    page: int = Query(1, ge=1),
+    limit: int | None = Query(None, ge=1),
+    _: None = Depends(require_machine_scopes("invoices:read")),
+):
     """
-    Return all invoices as JSON.
-    This endpoint uses the same basic password verification as /process-mock-email.
+    Return invoices as JSON with pagination (total count included).
+    Machine auth: Bearer / X-API-Key or legacy X-App-Password when enabled.
     """
     db = get_supabase_for_api()
-    return {"invoices": list_invoices(client=db)}
+    lim = limit if limit is not None else settings.INVOICE_LIST_DEFAULT_LIMIT
+    lim = min(lim, settings.INVOICE_LIST_MAX_LIMIT)
+    offset = (page - 1) * lim
+    page_data = list_invoices(client=db, limit=lim, offset=offset)
+    return {
+        "invoices": page_data["items"],
+        "total": page_data["total"],
+        "page": page,
+        "limit": page_data["limit"],
+        "offset": page_data["offset"],
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -266,12 +292,32 @@ async def dashboard_page(request: Request):
     error_code = request.query_params.get("error")
     success_code = request.query_params.get("success")
     error_message = DASHBOARD_ERROR_MESSAGES.get(error_code)
-    success_message = "Invoice processed successfully." if success_code == "uploaded" else None
+    if success_code == "uploaded":
+        success_message = "Invoice processed successfully."
+    elif success_code == "deduped":
+        success_message = "This invoice was already in your account (no duplicate saved)."
+    else:
+        success_message = None
     db = get_supabase_for_request(request)
     try:
-        invoices = list_invoices(client=db)
+        page = max(1, int(request.query_params.get("page") or 1))
+    except ValueError:
+        page = 1
+    try:
+        page_size = int(request.query_params.get("page_size") or settings.INVOICE_LIST_DEFAULT_LIMIT)
+    except ValueError:
+        page_size = settings.INVOICE_LIST_DEFAULT_LIMIT
+    page_size = min(max(page_size, 1), settings.INVOICE_LIST_MAX_LIMIT)
+    offset = (page - 1) * page_size
+    try:
+        page_result = list_invoices(client=db, limit=page_size, offset=offset)
+        invoices = page_result["items"]
+        invoice_total = page_result["total"]
     except Exception:
         invoices = []
+        invoice_total = 0
+    has_prev = page > 1
+    has_next = offset + len(invoices) < invoice_total
     csrf_token = get_or_create_csrf_token(request)
     return templates.TemplateResponse(
         request=request,
@@ -279,6 +325,11 @@ async def dashboard_page(request: Request):
         context={
             "request": request,
             "invoices": invoices,
+            "invoice_total": invoice_total,
+            "list_page": page,
+            "list_page_size": page_size,
+            "list_has_prev": has_prev,
+            "list_has_next": has_next,
             "error_message": error_message,
             "success_message": success_message,
             "csrf_token": csrf_token,
@@ -297,14 +348,26 @@ async def process_ui(request: Request):
 
     db = get_supabase_for_request(request)
     uid = invoice_user_id_for_row(request)
+    sample_path = Path("examples/sample_invoice_email.txt")
     try:
-        data = parse_mock_email("examples/sample_invoice_email.txt")
+        raw = sample_path.read_bytes()
+    except OSError:
+        return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
+    try:
+        data = parse_mock_email(str(sample_path))
     except Exception:
         return RedirectResponse("/dashboard?error=parse_failed", status_code=302)
     try:
-        save_invoice(data, client=db, user_id=uid)
+        result = save_invoice(
+            data,
+            client=db,
+            user_id=uid,
+            source_content_hash=hash_bytes(raw),
+        )
     except Exception:
         return RedirectResponse("/dashboard?error=save_failed", status_code=302)
+    if result["status"] == "duplicate":
+        return RedirectResponse("/dashboard?success=deduped", status_code=302)
     return RedirectResponse("/dashboard?success=uploaded", status_code=302)
 
 
@@ -375,9 +438,16 @@ async def upload_invoice(
         db = get_supabase_for_request(request)
         uid = invoice_user_id_for_row(request)
         try:
-            save_invoice(data, client=db, user_id=uid)
+            result = save_invoice(
+                data,
+                client=db,
+                user_id=uid,
+                source_content_hash=hash_bytes(content),
+            )
         except Exception:
             return RedirectResponse("/dashboard?error=save_failed", status_code=302)
+        if result["status"] == "duplicate":
+            return RedirectResponse("/dashboard?success=deduped", status_code=302)
         return RedirectResponse("/dashboard?success=uploaded", status_code=302)
     finally:
         try:

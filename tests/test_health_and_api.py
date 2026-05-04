@@ -28,6 +28,15 @@ def test_process_mock_email_with_valid_header(client: TestClient) -> None:
     )
     assert r.status_code == 200
     data = r.json()
-    assert data.get("status") == "saved"
+    assert data.get("status") in ("created", "duplicate")
     assert "invoice" in data
     assert data["invoice"].get("total") == 249.99
+
+
+def test_process_mock_email_accepts_bearer_token(client: TestClient) -> None:
+    r = client.post(
+        "/process-mock-email",
+        headers={"Authorization": "Bearer test-app-password"},
+    )
+    assert r.status_code == 200
+    assert r.json().get("status") in ("created", "duplicate")

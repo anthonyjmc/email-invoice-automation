@@ -5,7 +5,7 @@ Test environment and shared fixtures. Env must be set before importing `app.main
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock
+from copy import deepcopy
 
 import pytest
 from starlette.testclient import TestClient
@@ -33,11 +33,58 @@ _TEST_ENV: dict[str, str] = {
     "LOG_FORMAT": "text",
 }
 
-# Overwrite (not setdefault): host env must not break CI or local pytest.
 for _key, _val in _TEST_ENV.items():
     os.environ[_key] = _val
 
 from app.main import app  # noqa: E402
+from app.services.invoice_service import build_invoice_ref  # noqa: E402
+
+_INVOICE_ROWS: list[dict] = []
+
+
+def _fake_save_invoice(
+    data: dict,
+    *,
+    client,
+    user_id: str | None = None,
+    source_content_hash: str | None = None,
+    idempotency_key: str | None = None,
+):
+    row = {k: v for k, v in deepcopy(data).items() if k != "id"}
+    if user_id is not None:
+        row["user_id"] = user_id
+    if source_content_hash:
+        row["source_content_hash"] = source_content_hash
+    if idempotency_key:
+        row["idempotency_key"] = idempotency_key
+    inv_no = row.get("invoice_number")
+    if isinstance(inv_no, str):
+        inv_no = inv_no.strip() or None
+        row["invoice_number"] = inv_no
+    ref = build_invoice_ref(row.get("vendor"), inv_no, row.get("invoice_date"))
+    if ref:
+        row["invoice_ref"] = ref
+
+    for existing in _INVOICE_ROWS:
+        if idempotency_key and existing.get("idempotency_key") == idempotency_key:
+            if existing.get("user_id") == user_id:
+                return {"status": "duplicate", "id": str(existing["id"]), "invoice": existing}
+        if source_content_hash and existing.get("source_content_hash") == source_content_hash:
+            if existing.get("user_id") == user_id:
+                return {"status": "duplicate", "id": str(existing["id"]), "invoice": existing}
+        if ref and user_id and existing.get("invoice_ref") == ref and existing.get("user_id") == user_id:
+            return {"status": "duplicate", "id": str(existing["id"]), "invoice": existing}
+
+    row["id"] = str(len(_INVOICE_ROWS) + 1)
+    _INVOICE_ROWS.append(row)
+    return {"status": "created", "id": row["id"], "invoice": row}
+
+
+def _fake_list_invoices(*, client, limit: int = 50, offset: int = 0):
+    rev = list(reversed(_INVOICE_ROWS))
+    total = len(rev)
+    items = rev[offset : offset + limit]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @pytest.fixture
@@ -45,13 +92,20 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+async def _rate_limit_disabled(*_a, **_k) -> bool:
+    return False
+
+
 @pytest.fixture(autouse=True)
-def mock_supabase_clients(monkeypatch: pytest.MonkeyPatch) -> None:
-    mock = MagicMock()
-    mock.table.return_value.select.return_value.order.return_value.execute.return_value = MagicMock(data=[])
-    mock.table.return_value.insert.return_value.execute.return_value = MagicMock()
-    monkeypatch.setattr("app.main.get_supabase_for_request", lambda _req: mock)
-    monkeypatch.setattr("app.main.get_supabase_for_api", lambda: mock)
+def disable_rate_limits_for_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.main.check_rate_limited", _rate_limit_disabled)
+
+
+@pytest.fixture(autouse=True)
+def stub_invoice_persistence(monkeypatch: pytest.MonkeyPatch) -> None:
+    _INVOICE_ROWS.clear()
+    monkeypatch.setattr("app.main.save_invoice", _fake_save_invoice)
+    monkeypatch.setattr("app.main.list_invoices", _fake_list_invoices)
 
 
 @pytest.fixture(autouse=True)

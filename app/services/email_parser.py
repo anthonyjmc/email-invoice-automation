@@ -13,6 +13,19 @@ from pypdf import PdfReader
 from app.services.azure_invoice_agent import extract_invoice_from_email
 
 
+def extract_invoice_number_from_text(text: str) -> Optional[str]:
+    m = re.search(
+        r"(?im)subject\s*:\s*.*?invoice\s*#?\s*([A-Za-z0-9][A-Za-z0-9\-]*)",
+        text,
+    )
+    if m:
+        return m.group(1).strip()
+    m2 = re.search(r"(?i)\b(?:invoice|inv)\s*[#:]?\s*([A-Za-z0-9][A-Za-z0-9\-]{2,})\b", text)
+    if m2:
+        return m2.group(1).strip()
+    return None
+
+
 def parse_msg_invoice(filepath: str) -> Dict[str, Any]:
     """
     Parse a .msg (Outlook) file and extract invoice fields using Azure OpenAI.
@@ -193,6 +206,11 @@ def parse_text_to_fields(
         if not data.get("sender_email"):
             data["sender_email"] = "unknown@email.com"
 
+        if not data.get("invoice_number"):
+            inv = extract_invoice_number_from_text(text)
+            if inv:
+                data["invoice_number"] = inv
+
         return data
 
     except Exception:
@@ -221,10 +239,14 @@ def parse_text_to_fields(
         else:
             total = 0.0
 
-        return {
+        inv = extract_invoice_number_from_text(text)
+        out: Dict[str, Any] = {
             "vendor": vendor,
             "total": total,
             "currency": "USD",
             "invoice_date": datetime.today().date().isoformat(),
             "sender_email": fallback_sender or "unknown@email.com",
         }
+        if inv:
+            out["invoice_number"] = inv
+        return out

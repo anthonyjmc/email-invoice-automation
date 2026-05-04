@@ -13,3 +13,4 @@ def test_parse_mock_email_sample_file_regex_fallback() -> None:
     assert data.get("total") == 249.99
     assert data.get("currency") == "USD"
     assert data.get("vendor")
+    assert data.get("invoice_number") == "1234"
