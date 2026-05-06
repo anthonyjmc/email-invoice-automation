@@ -44,10 +44,15 @@ class Settings(BaseSettings):
 
     @field_validator("SUPABASE_SERVICE_ROLE_KEY", mode="before")
     @classmethod
-    def empty_service_role_to_none(cls, value: object) -> object:
-        if value == "":
+    def normalize_optional_service_role_key(cls, value: object) -> object:
+        if value is None or value == "":
             return None
-        return value
+        if not isinstance(value, str):
+            return value
+        v = value.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+            v = v[1:-1].strip()
+        return v if v else None
 
     AZURE_OPENAI_ENDPOINT: str
     AZURE_OPENAI_API_KEY: str

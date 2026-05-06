@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis_async
+import structlog
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,6 +12,8 @@ from app.logging_config import configure_logging
 configure_logging()
 
 import secrets
+
+logger = structlog.get_logger(__name__)
 
 from fastapi import FastAPI, Depends, Request, Form, File, UploadFile, HTTPException, Query, Header
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -45,8 +48,34 @@ from app.metrics import render_metrics_payload
 from app.error_handlers import register_exception_handlers
 
 
+def _log_invoice_save_error(source: str, exc: BaseException) -> None:
+    payload: dict[str, object] = {
+        "source": source,
+        "exc_type": type(exc).__name__,
+        "message": str(exc),
+    }
+    to_json = getattr(exc, "json", None)
+    if callable(to_json):
+        try:
+            payload["postgrest"] = to_json()
+        except Exception:
+            pass
+    logger.exception("invoice_save_failed", **payload)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.WEB_AUTH_PROVIDER == "legacy" and not settings.SUPABASE_SERVICE_ROLE_KEY:
+        logger.warning(
+            "invoice_save_will_fail_without_service_role",
+            hint="Legacy login uses Supabase without a user JWT; RLS on public.invoices only allows authenticated inserts "
+            "or service_role. Set SUPABASE_SERVICE_ROLE_KEY on the server (never in the browser) or WEB_AUTH_PROVIDER=supabase.",
+        )
+    if settings.WEB_AUTH_PROVIDER == "supabase":
+        logger.info(
+            "supabase_web_auth_dashboard_uses_jwt",
+            hint="Dashboard saves use the signed-in user's JWT (not SUPABASE_SERVICE_ROLE_KEY). Expired sessions fall back to anon and inserts fail under RLS—sign out and sign in again if saves break.",
+        )
     redis_client = None
     if settings.REDIS_URL:
         redis_client = redis_async.from_url(
@@ -98,7 +127,12 @@ DASHBOARD_ERROR_MESSAGES = {
     "file_too_large": "File is too large. Reduce size and try again.",
     "invalid_file_type": "File content does not match the declared type (or is not a supported invoice format).",
     "parse_failed": "Unable to process that file. Please verify format and content.",
-    "save_failed": "Invoice was parsed but could not be saved. Please try again.",
+    "save_failed": (
+        "Invoice was parsed but could not be saved. "
+        "Legacy login + RLS: set SUPABASE_SERVICE_ROLE_KEY on the server, restart Uvicorn, and avoid wrapping the key in extra quotes (see DEPLOYMENT.md). "
+        "Supabase Auth login: the service role key is ignored for the dashboard—use a fresh login if your session expired. "
+        "Check logs for invoice_save_failed (includes PostgREST message)."
+    ),
     "rate_limited": "Too many uploads in a short period. Please wait and retry.",
     "csrf_invalid": "Security check failed. Please refresh the page and try again.",
     "av_misconfigured": "Antivirus scan is enabled but not configured. Set UPLOAD_AV_SCAN_COMMAND.",
@@ -379,7 +413,8 @@ async def process_ui(request: Request):
             user_id=uid,
             source_content_hash=hash_bytes(raw),
         )
-    except Exception:
+    except Exception as exc:
+        _log_invoice_save_error("process_ui", exc)
         return RedirectResponse("/dashboard?error=save_failed", status_code=302)
     if result["status"] == "duplicate":
         return RedirectResponse("/dashboard?success=deduped", status_code=302)
@@ -459,7 +494,8 @@ async def upload_invoice(
                 user_id=uid,
                 source_content_hash=hash_bytes(content),
             )
-        except Exception:
+        except Exception as exc:
+            _log_invoice_save_error("upload_invoice", exc)
             return RedirectResponse("/dashboard?error=save_failed", status_code=302)
         if result["status"] == "duplicate":
             return RedirectResponse("/dashboard?success=deduped", status_code=302)

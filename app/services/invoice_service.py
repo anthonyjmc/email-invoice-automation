@@ -146,12 +146,9 @@ def save_invoice(
 
     insert_payload = {k: v for k, v in row.items() if v is not None}
     try:
-        ins = (
-            client.table("invoices")
-            .insert(insert_payload)
-            .select("id,vendor,total,currency,invoice_date,sender_email,invoice_number,created_at")
-            .execute()
-        )
+        # postgrest-py 0.16+: insert() returns SyncQueryRequestBuilder (no .select() chain).
+        # Default returning=representation still returns the inserted row in the response.
+        ins = client.table("invoices").insert(insert_payload).execute()
     except Exception as exc:
         msg = str(exc).lower()
         if "duplicate" in msg or "unique" in msg or "23505" in msg:
