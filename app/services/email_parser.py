@@ -13,6 +13,18 @@ from pypdf import PdfReader
 from app.services.azure_invoice_agent import extract_invoice_from_email
 
 
+def _extract_sender_email_from_text(text: str) -> Optional[str]:
+    # Accept lines like:
+    #   From: billing@vendor.com
+    #   From: Accounts Receivable <billing@vendor.com>
+    m = re.search(r"(?im)^\s*from\s*:\s*(.+?)\s*$", text)
+    if not m:
+        return None
+    candidate = m.group(1).strip()
+    email_match = re.search(r"([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})", candidate, re.IGNORECASE)
+    return email_match.group(1) if email_match else None
+
+
 def extract_invoice_number_from_text(text: str) -> Optional[str]:
     m = re.search(
         r"(?im)subject\s*:\s*.*?invoice\s*#?\s*([A-Za-z0-9][A-Za-z0-9\-]*)",
@@ -113,7 +125,7 @@ def parse_pdf_invoice(filepath: str) -> Dict[str, Any]:
     except Exception:
         content = ""
 
-    return parse_text_to_fields(content)
+    return parse_text_to_fields(content, fallback_sender=_extract_sender_email_from_text(content))
 
 
 def parse_text_to_fields(
@@ -164,6 +176,36 @@ def parse_text_to_fields(
                 except ValueError:
                     data["total"] = 0.0
 
+        # If the model (or fallback regex) returned a subtotal-like number,
+        # prefer an explicit "total due" line, or compute subtotal + tax when available.
+        def _parse_amount(match: re.Match[str] | None) -> float | None:
+            if not match:
+                return None
+            raw = match.group(1).replace(",", "")
+            try:
+                return float(raw)
+            except ValueError:
+                return None
+
+        total_due_match = re.search(
+            r"(?i)(?:Total Amount Due|Balance Due|Amount\s*Due|Total)[^0-9]*"
+            r"(\d[\d,]*(?:\.\d{2})?)",
+            text,
+        )
+        subtotal_match = re.search(r"(?i)Subtotal[^0-9]*(\d[\d,]*(?:\.\d{2})?)", text)
+        tax_match = re.search(r"(?i)(?:Sales\s*Tax|Tax)[^0-9]*(\d[\d,]*(?:\.\d{2})?)", text)
+
+        total_due = _parse_amount(total_due_match)
+        subtotal = _parse_amount(subtotal_match)
+        tax = _parse_amount(tax_match)
+
+        if isinstance(data.get("total"), (int, float)):
+            current_total = float(data["total"])
+            if total_due is not None and abs(current_total - total_due) >= 0.01:
+                data["total"] = total_due
+            elif subtotal is not None and tax is not None and abs(current_total - subtotal) < 0.01:
+                data["total"] = round(subtotal + tax, 2)
+
         # ---------- INVOICE DATE ----------
         if not data.get("invoice_date"):
             # Try ISO-style date: 2025-01-20
@@ -188,6 +230,10 @@ def parse_text_to_fields(
         # ---------- SENDER EMAIL ----------
         if fallback_sender and not data.get("sender_email"):
             data["sender_email"] = fallback_sender
+        if not data.get("sender_email"):
+            inferred = _extract_sender_email_from_text(text)
+            if inferred:
+                data["sender_email"] = inferred
 
         # ---------- DEFAULTS ----------
         if not data.get("currency"):
