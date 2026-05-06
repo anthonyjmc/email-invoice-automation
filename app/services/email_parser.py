@@ -17,24 +17,70 @@ def _extract_sender_email_from_text(text: str) -> Optional[str]:
     # Accept lines like:
     #   From: billing@vendor.com
     #   From: Accounts Receivable <billing@vendor.com>
-    m = re.search(r"(?im)^\s*from\s*:\s*(.+?)\s*$", text)
+    m = re.search(r"(?im)^\s*from\s*:\s*(.*?)\s*$", text)
     if not m:
         return None
     candidate = m.group(1).strip()
+    if not candidate:
+        # Some PDF text extractors split "From:" and the email onto the next line.
+        m2 = re.search(r"(?im)^\s*from\s*:\s*$\s*([^\r\n]+)\s*$", text)
+        candidate = m2.group(1).strip() if m2 else ""
     email_match = re.search(r"([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})", candidate, re.IGNORECASE)
     return email_match.group(1) if email_match else None
 
 
+def _extract_labeled_amount(text: str, *, label_pattern: str) -> float | None:
+    """
+    Extract a number that may appear on the same line as the label or on the next line.
+    label_pattern should match the label without trailing punctuation (case-insensitive).
+    """
+    same_line = re.search(
+        rf"(?im)^\s*(?:{label_pattern})\s*[:\-]?\s*[^0-9]*"
+        rf"(\d[\d,]*(?:\.\d{{2}})?)\s*(?:USD|EUR|GBP)?\s*$",
+        text,
+    )
+    if same_line:
+        raw = same_line.group(1).replace(",", "")
+        try:
+            return float(raw)
+        except ValueError:
+            return None
+    next_line = re.search(
+        rf"(?im)^\s*(?:{label_pattern})\s*[:\-]?\s*$\s*"
+        rf"(\d[\d,]*(?:\.\d{{2}})?)\s*(?:USD|EUR|GBP)?\s*$",
+        text,
+    )
+    if not next_line:
+        return None
+    raw = next_line.group(1).replace(",", "")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
 def extract_invoice_number_from_text(text: str) -> Optional[str]:
+    # Prefer explicit "Invoice Number" label (same or next line)
+    m0 = re.search(r"(?im)^\s*invoice\s*number\s*:\s*([A-Za-z0-9][A-Za-z0-9\-]{2,})\s*$", text)
+    if m0:
+        return m0.group(1).strip()
+    m0b = re.search(r"(?im)^\s*invoice\s*number\s*:\s*$\s*([A-Za-z0-9][A-Za-z0-9\-]{2,})\s*$", text)
+    if m0b:
+        return m0b.group(1).strip()
+
     m = re.search(
         r"(?im)subject\s*:\s*.*?invoice\s*#?\s*([A-Za-z0-9][A-Za-z0-9\-]*)",
         text,
     )
     if m:
         return m.group(1).strip()
-    m2 = re.search(r"(?i)\b(?:invoice|inv)\s*[#:]?\s*([A-Za-z0-9][A-Za-z0-9\-]{2,})\b", text)
+    # Common explicit patterns: "Invoice # INV-123", "INV-123", "Invoice: INV-123"
+    m2 = re.search(r"(?im)^\s*invoice\s*#?\s*[:#]?\s*([A-Za-z0-9][A-Za-z0-9\-]{2,})\s*$", text)
     if m2:
         return m2.group(1).strip()
+    m3 = re.search(r"(?i)\bINV-[A-Za-z0-9][A-Za-z0-9\-]{2,}\b", text)
+    if m3:
+        return m3.group(0).strip()
     return None
 
 
@@ -178,26 +224,11 @@ def parse_text_to_fields(
 
         # If the model (or fallback regex) returned a subtotal-like number,
         # prefer an explicit "total due" line, or compute subtotal + tax when available.
-        def _parse_amount(match: re.Match[str] | None) -> float | None:
-            if not match:
-                return None
-            raw = match.group(1).replace(",", "")
-            try:
-                return float(raw)
-            except ValueError:
-                return None
-
-        total_due_match = re.search(
-            r"(?i)(?:Total Amount Due|Balance Due|Amount\s*Due|Total)[^0-9]*"
-            r"(\d[\d,]*(?:\.\d{2})?)",
-            text,
+        total_due = _extract_labeled_amount(
+            text, label_pattern=r"Total\s*Amount\s*Due|Balance\s*Due|Amount\s*Due|Total"
         )
-        subtotal_match = re.search(r"(?i)Subtotal[^0-9]*(\d[\d,]*(?:\.\d{2})?)", text)
-        tax_match = re.search(r"(?i)(?:Sales\s*Tax|Tax)[^0-9]*(\d[\d,]*(?:\.\d{2})?)", text)
-
-        total_due = _parse_amount(total_due_match)
-        subtotal = _parse_amount(subtotal_match)
-        tax = _parse_amount(tax_match)
+        subtotal = _extract_labeled_amount(text, label_pattern=r"Subtotal")
+        tax = _extract_labeled_amount(text, label_pattern=r"(?:Sales\s*Tax|Tax)")
 
         if isinstance(data.get("total"), (int, float)):
             current_total = float(data["total"])
@@ -267,31 +298,27 @@ def parse_text_to_fields(
             re.IGNORECASE,
         )
 
-        total_match = re.search(
-            r"(Total|Total Amount Due|Amount\s*Due|Balance)[^0-9]*"
-            r"(\d[\d,]*(?:\.\d{2})?)",
-            text,
-            re.IGNORECASE,
-        )
-
         vendor = vendor_match.group(2).strip() if vendor_match else "Unknown Vendor"
-
-        if total_match:
-            raw_amount = total_match.group(2).replace(",", "")
-            try:
-                total = float(raw_amount)
-            except ValueError:
-                total = 0.0
+        total_due = _extract_labeled_amount(
+            text, label_pattern=r"Total\s*Amount\s*Due|Balance\s*Due|Amount\s*Due|Total"
+        )
+        subtotal = _extract_labeled_amount(text, label_pattern=r"Subtotal")
+        tax = _extract_labeled_amount(text, label_pattern=r"(?:Sales\s*Tax|Tax)")
+        if total_due is not None:
+            total = total_due
+        elif subtotal is not None and tax is not None:
+            total = round(subtotal + tax, 2)
         else:
             total = 0.0
 
         inv = extract_invoice_number_from_text(text)
+        inferred_sender = _extract_sender_email_from_text(text)
         out: Dict[str, Any] = {
             "vendor": vendor,
             "total": total,
             "currency": "USD",
             "invoice_date": datetime.today().date().isoformat(),
-            "sender_email": fallback_sender or "unknown@email.com",
+            "sender_email": fallback_sender or inferred_sender or "unknown@email.com",
         }
         if inv:
             out["invoice_number"] = inv
